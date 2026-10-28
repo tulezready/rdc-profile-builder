@@ -1,0 +1,1336 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body><title>RDC Profile Builder</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#14302F">
+<link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/icon-192.png">
+<script>var LIB_URLS = {"docx": "lib/docx.iife.js", "jspdf": "lib/jspdf.umd.min.js"};
+if ("serviceWorker" in navigator) addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one column workbench — app bar, step rail, form sheet, sticky step nav. */
+:root{
+  --paper:#F3F5F1; --surface:#FFFFFF; --sunk:#E9EDE7; --ink:#15302E; --muted:#5B6A64; --line:#D7DED6;
+  --brand:#14302F; --brand-ink:#F3F5F1; --accent:#B97A14; --accent-soft:#F6EBD6; --good:#2E7A4E; --warn:#A8661A; --bad:#B23B2E;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"Public Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0E1514; --surface:#162120; --sunk:#1D2a28; --ink:#E5EDE9; --muted:#97A7A1; --line:#2B3936;
+  --brand:#0A1211; --brand-ink:#E5EDE9; --accent:#E2A642; --accent-soft:#3A2E17; --good:#5DBA85; --warn:#E0A050; --bad:#E07062; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --paper:#0E1514; --surface:#162120; --sunk:#1D2a28; --ink:#E5EDE9; --muted:#97A7A1; --line:#2B3936;
+  --brand:#0A1211; --brand-ink:#E5EDE9; --accent:#E2A642; --accent-soft:#3A2E17; --good:#5DBA85; --warn:#E0A050; --bad:#E07062; color-scheme:dark }
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--brand)}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:760px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+/* app bar */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--brand);color:var(--brand-ink)}
+.bar .wrap{display:flex;align-items:center;gap:12px;padding-block:10px}
+.brand{display:flex;align-items:center;gap:10px;min-width:0;flex:1;background:none;border:0;padding:0;text-align:left;color:inherit}
+.mark{width:34px;height:34px;flex:none;border-radius:8px;background:var(--accent);display:grid;place-items:center}
+.mark svg{width:20px;height:20px}
+.brand b{font-family:var(--display);font-size:18px;font-weight:700;letter-spacing:.2px;display:block;line-height:1.1}
+.brand small{display:block;font-size:11.5px;opacity:.72;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.seg{display:flex;border:1px solid color-mix(in srgb,var(--brand-ink) 35%,transparent);border-radius:999px;overflow:hidden;flex:none}
+.seg button{background:none;border:0;padding:5px 11px;font-size:12.5px;font-weight:600;color:var(--brand-ink);opacity:.75}
+.seg button[aria-pressed="true"]{background:var(--brand-ink);color:var(--brand);opacity:1}
+.iconbtn{background:none;border:1px solid color-mix(in srgb,var(--brand-ink) 35%,transparent);color:var(--brand-ink);border-radius:999px;width:32px;height:32px;display:grid;place-items:center;flex:none}
+
+/* home */
+.hero{padding-block:26px 8px}
+.hero h1{font-family:var(--display);font-size:clamp(26px,6vw,36px);line-height:1.08;margin:0 0 10px;text-wrap:balance;letter-spacing:-.3px}
+.hero p{margin:0;color:var(--muted);max-width:56ch}
+.actions{display:flex;flex-wrap:wrap;gap:10px;padding-block:18px 8px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border-radius:var(--r);padding:10px 16px;font-weight:600;border:1px solid var(--line);background:var(--surface)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#1B1305}
+.btn.ghost{background:transparent}
+.btn.sm{padding:6px 11px;font-size:13.5px}
+.btn.danger{color:var(--bad)}
+.btn[disabled]{opacity:.55;cursor:progress}
+.list{display:grid;gap:10px;padding-block:8px 40px}
+.pcard{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;grid-template-columns:52px 1fr;gap:12px;align-items:start}
+.pthumb{width:52px;height:52px;border-radius:8px;display:grid;place-items:center;font-family:var(--display);font-weight:700;font-size:20px;color:#fff;overflow:hidden;background:var(--brand)}
+.pthumb img{width:100%;height:100%;object-fit:contain;background:#fff}
+.pmeta{min-width:0}
+.pmeta h3{margin:0;font-size:16px;line-height:1.3;overflow-wrap:anywhere}
+.pmeta p{margin:2px 0 8px;color:var(--muted);font-size:13px}
+.meter{height:5px;background:var(--sunk);border-radius:9px;overflow:hidden;margin-bottom:10px}
+.meter i{display:block;height:100%;background:var(--good)}
+.prow{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;padding:2px 7px;border-radius:999px;background:var(--accent-soft);color:var(--warn);vertical-align:2px;margin-left:6px}
+.empty{padding:28px 16px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:var(--r)}
+.foot{color:var(--muted);font-size:12.5px;padding-block:8px 32px}
+
+/* editor */
+.rail{position:sticky;top:calc(env(safe-area-inset-top,0px) + 54px);z-index:8;background:var(--paper);border-bottom:1px solid var(--line)}
+.rail .wrap{display:flex;gap:6px;overflow-x:auto;padding-block:10px;scrollbar-width:none}
+.rail .wrap::-webkit-scrollbar{display:none}
+.step{flex:none;display:flex;align-items:center;gap:7px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px 5px 6px;font-size:13px;font-weight:600;color:var(--muted)}
+.step .n{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11.5px;background:var(--sunk);color:var(--muted);font-variant-numeric:tabular-nums}
+.step.done .n{background:var(--good);color:#fff}
+.step[aria-current="step"]{border-color:var(--ink);color:var(--ink)}
+.step[aria-current="step"] .n{background:var(--ink);color:var(--paper)}
+.sheet{padding-block:22px 120px}
+.sheet h2{font-family:var(--display);font-size:24px;margin:0 0 4px;letter-spacing:-.2px;text-wrap:balance}
+.sheet .sub{margin:0 0 20px;color:var(--muted);font-size:14px}
+.sheet .bizname{color:var(--muted);font-size:13px;font-weight:600;margin:0 0 6px;overflow-wrap:anywhere}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px}
+.full{grid-column:1/-1}
+@media (max-width:560px){.grid{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field label{font-weight:600;font-size:13.5px}
+.field label em{font-style:normal;color:var(--warn);font-weight:500;font-size:12px;margin-left:4px}
+.field .hint{font-size:12.5px;color:var(--muted)}
+input[type=text],input[type=email],input[type=tel],input[type=date],select,textarea{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 11px;min-height:44px}
+textarea{min-height:110px;resize:vertical;line-height:1.5}
+textarea.tall{min-height:170px}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 22%,transparent)}
+.notice{border-radius:8px;padding:10px 12px;font-size:13.5px;background:var(--accent-soft);color:var(--ink);margin-bottom:14px}
+.notice.good{background:color-mix(in srgb,var(--good) 14%,var(--surface))}
+.repeat{display:grid;gap:12px}
+.item{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:14px}
+.item .ihead{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;gap:10px}
+.item .ihead b{font-size:12px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);font-variant-numeric:tabular-nums}
+.linkbtn{background:none;border:0;color:var(--bad);font-weight:600;font-size:13px;padding:4px}
+.section-title{font-family:var(--display);font-size:17px;margin:26px 0 4px}
+.media-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:10px}
+.mtile{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);overflow:hidden;display:flex;flex-direction:column}
+.mtile .ph{aspect-ratio:4/3;max-width:100%;background:var(--sunk);position:relative;overflow:hidden}
+.mtile .ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.mtile.cert .ph{aspect-ratio:3/4}
+.mtile.cert .ph img{object-fit:contain;background:#fff}
+.mtile input{border:0;border-top:1px solid var(--line);border-radius:0;min-height:38px;font-size:13px}
+.mtile .linkbtn{align-self:flex-end;padding:6px 10px}
+.logo-row{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.logo-box{width:96px;height:96px;border-radius:12px;border:1px dashed var(--line);background:#fff;display:grid;place-items:center;overflow:hidden;color:#8A949C;font-size:12px}
+.logo-box img{width:100%;height:100%;object-fit:contain}
+.filebtn{position:relative;overflow:hidden}
+.filebtn input{position:absolute;inset:0;opacity:0;cursor:pointer}
+
+.navbar{position:fixed;left:0;right:0;bottom:0;z-index:8;background:color-mix(in srgb,var(--paper) 92%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.navbar .wrap{display:flex;align-items:center;gap:10px;padding-block:10px}
+.navbar .status{flex:1;text-align:center;font-size:12.5px;color:var(--muted);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* export */
+.themes{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:10px;margin:10px 0 6px}
+.theme{border:2px solid var(--line);border-radius:var(--r);background:var(--surface);padding:8px;text-align:left;font-weight:600;font-size:13px}
+.theme[aria-pressed="true"]{border-color:var(--ink)}
+.swatch{display:flex;height:34px;border-radius:6px;overflow:hidden;margin-bottom:6px}
+.swatch i{flex:3}.swatch i+i{flex:1}
+.check{list-style:none;padding:0;margin:10px 0 0;display:grid;gap:6px}
+.check li{display:flex;gap:10px;align-items:center;font-size:14px}
+.check .dot{width:18px;height:18px;border-radius:50%;flex:none;display:grid;place-items:center;font-size:11px;color:#fff;background:var(--good)}
+.check li.miss .dot{background:transparent;border:2px solid var(--warn)}
+.check li.miss button{background:none;border:0;padding:0;color:var(--ink);text-decoration:underline;text-underline-offset:3px;font-size:14px;text-align:left}
+.exbtns{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px}
+.preview{margin-top:12px;background:var(--sunk);border-radius:var(--r);padding:16px;display:grid;gap:14px;justify-items:center}
+.paper{width:100%;max-width:440px;background:#fff;color:#1F2A33;box-shadow:0 1px 3px rgba(0,0,0,.12),0 8px 24px rgba(0,0,0,.08);aspect-ratio:210/297;overflow:hidden;position:relative;font-size:9px;line-height:1.45}
+.paper.cover .band{position:absolute;inset:0 0 36% 0;padding:9% 9%;color:#fff;display:flex;flex-direction:column;justify-content:flex-end}
+.paper.cover .band .lg{width:22%;aspect-ratio:1;background:#fff;border-radius:6px;padding:3%;margin-bottom:auto}
+.paper.cover .band .lg img{width:100%;height:100%;object-fit:contain}
+.paper.cover .kick{font-weight:700;letter-spacing:2px;font-size:8px}
+.paper.cover .nm{font-size:22px;font-weight:700;line-height:1.1;margin:6px 0;overflow-wrap:anywhere}
+.paper.cover .tg{font-style:italic;font-size:10px}
+.paper.cover .low{position:absolute;left:9%;right:9%;bottom:8%;color:#4A5560}
+.paper.cover .low b{color:#1F2A33}
+.paper.page{padding:8% 8% 10%}
+.paper.page h4{margin:0 0 6px;font-size:12px;padding-bottom:3px;border-bottom:1.5px solid}
+.paper.page table{width:100%;border-collapse:collapse;margin-bottom:10px}
+.paper.page td{border:1px solid #D5D9DD;padding:2px 5px;vertical-align:top}
+.paper.page td:first-child{font-weight:700;width:36%}
+.paper.page p{margin:0 0 6px}
+.paper .pf{position:absolute;left:8%;right:8%;bottom:4%;border-top:1px solid;padding-top:3px;display:flex;justify-content:space-between;color:#6B7680;font-size:7px}
+.small{font-size:12.5px;color:var(--muted)}
+
+/* dialog + toast */
+.scrim{position:fixed;inset:0;z-index:20;background:rgba(5,12,11,.5);display:grid;place-items:end center;padding:16px;padding-bottom:max(16px,env(safe-area-inset-bottom,0px))}
+@media (min-width:640px){.scrim{place-items:center}}
+.dialog{background:var(--surface);border-radius:14px;max-width:520px;width:100%;padding:22px;max-height:88%;overflow:auto}
+.dialog h3{font-family:var(--display);font-size:21px;margin:0 0 8px}
+.dialog h4{margin:18px 0 4px;font-size:15px}
+.dialog p{margin:0 0 8px;color:var(--muted)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:30;background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:999px;font-size:13.5px;font-weight:600;max-width:calc(100% - 32px);text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.2)}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:rise .22s ease-out}@keyframes rise{from{opacity:.4;transform:translateY(6px)}to{opacity:1;transform:none}}}
+</style>
+
+<header class="bar"><div class="wrap">
+  <button class="brand" id="homeBtn" type="button" aria-label="Home">
+    <span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="#1B1305" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/><path d="M9 12h6M9 16h4"/></svg></span>
+    <span style="min-width:0"><b id="tApp">Profile Builder</b><small id="tBy">by Ready Digital Consultancy</small></span>
+  </button>
+  <div class="seg" role="group" aria-label="Language">
+    <button type="button" id="langEn" aria-pressed="true">EN</button>
+    <button type="button" id="langTp" aria-pressed="false">TP</button>
+  </div>
+  <button class="iconbtn" id="aboutBtn" type="button" aria-label="About">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v6M12 7.5v.01"/></svg>
+  </button>
+</div></header>
+
+<main id="app"></main>
+<div id="layer"></div>
+
+<script>/* UI strings (English / Tok Pisin), industries with starter text, provinces. */
+var PROVINCES = ["Bougainville (AROB)","Central","Chimbu (Simbu)","East New Britain","East Sepik","Eastern Highlands","Enga","Gulf","Hela","Jiwaka","Madang","Manus","Milne Bay","Morobe","National Capital District","New Ireland","Oro (Northern)","Southern Highlands","West New Britain","West Sepik (Sandaun)","Western","Western Highlands"];
+
+var INDUSTRIES = {
+  agriculture: {
+    en: "Agriculture & nursery", tp: "Gaden na nasari",
+    about: "{name} is a locally owned agriculture business based in {place}. Since {year} we have supplied quality produce and planting material to farmers and buyers in our area.\nWe follow good farming practice so that what we supply is healthy, reliable and good value.",
+    vision: "To be the most trusted agriculture supplier in {province}.",
+    mission: "We grow and supply quality produce and planting material, deliver on time, and share practical advice so local farmers can grow more and earn more.",
+    values: "Quality in everything we grow\nHonesty with our customers\nRespect for the land\nSupport for our community",
+    services: [["Seedlings and planting material", "Healthy seedlings raised in our nursery, ready for planting."], ["Fresh produce", "Seasonal produce supplied to markets, shops and buyers."]],
+    market: "Our customers are smallholder farmers, farmer groups, local markets and buyers across {province}."
+  },
+  poultry: {
+    en: "Poultry & livestock", tp: "Kakaruk na ol animal",
+    about: "{name} is a poultry and livestock business based in {place}. We have been raising animals since {year}, supplying households, shops and caterers with fresh, healthy stock.",
+    vision: "To be the leading local supplier of quality poultry and livestock in {province}.",
+    mission: "We raise healthy animals using good feeding and hygiene practice, and supply our customers with fresh, affordable meat and eggs.",
+    values: "Animal health and hygiene\nFreshness and quality\nFair prices\nReliable supply",
+    services: [["Live birds", "Broiler and layer birds sold live to households and farmers."], ["Dressed chicken", "Fresh dressed chicken for shops, caterers and events."], ["Eggs", "Fresh eggs supplied by the tray."]],
+    market: "We supply households, trade stores, caterers, schools and market vendors in {province}."
+  },
+  retail: {
+    en: "Retail & trade store", tp: "Stoa na bisnis bilong salim samting",
+    about: "{name} is a retail business serving the community of {place}. Since {year} we have supplied everyday goods at fair prices, close to where our customers live.",
+    vision: "To be the first-choice store for families in {place}.",
+    mission: "We keep our shelves stocked with the goods our community needs, at fair prices, with friendly and honest service.",
+    values: "Fair prices\nFriendly service\nHonesty\nServing our community",
+    services: [["Groceries and food items", "Rice, tinned food, flour, sugar and other daily needs."], ["Household goods", "Cleaning products, toiletries and household items."], ["Phone credit and data", "Mobile top-ups for local networks."]],
+    market: "Our customers are families, workers and students living and working in and around {place}."
+  },
+  transport: {
+    en: "Transport, taxi & hire", tp: "Kar, taksi na haia",
+    about: "{name} is a transport business based in {place}. Since {year} we have provided safe, reliable transport for passengers and goods.",
+    vision: "To be the most reliable transport service in {province}.",
+    mission: "We move people and goods safely and on time, with well-maintained vehicles and courteous drivers.",
+    values: "Safety first\nPunctuality\nCourtesy\nWell-kept vehicles",
+    services: [["Taxi service", "Point-to-point passenger transport within town and nearby areas."], ["Vehicle hire", "Vehicles with drivers for events, offices and groups."], ["Cargo delivery", "Delivery of goods and produce to markets and customers."]],
+    market: "We serve the travelling public, businesses, government offices and farmers in {province}."
+  },
+  construction: {
+    en: "Construction & building", tp: "Wok bilong wokim haus",
+    about: "{name} is a building and construction business based in {place}. Since {year} we have delivered residential and small commercial projects to a good standard, on time and on budget.",
+    vision: "To be the trusted local builder for quality, affordable construction in {province}.",
+    mission: "We build safe, durable structures using skilled local workers, sound materials and good project management.",
+    values: "Safety on every site\nQuality workmanship\nHonest pricing\nDelivering on time",
+    services: [["Residential construction", "New houses, extensions and renovations."], ["Commercial and community buildings", "Classrooms, aid posts, shops and offices."], ["Repairs and maintenance", "Roofing, plumbing, painting and general repairs."]],
+    market: "Our clients are households, businesses, churches, schools, LLGs and government agencies in {province}."
+  },
+  hospitality: {
+    en: "Guesthouse, food & catering", tp: "Gesthaus, kaikai na kateren",
+    about: "{name} is a hospitality business based in {place}. Since {year} we have welcomed guests and served good local food in a clean, friendly setting.",
+    vision: "To be the best-loved place to stay and eat in {place}.",
+    mission: "We offer clean rooms, good food and warm PNG hospitality at prices our guests can afford.",
+    values: "Warm welcome\nCleanliness\nGood local food\nValue for money",
+    services: [["Accommodation", "Clean, secure rooms for travellers and visiting officers."], ["Catering", "Meals for meetings, workshops, weddings and church events."], ["Takeaway and kai bar", "Hot meals and snacks daily."]],
+    market: "Our guests and customers include travellers, government and NGO officers, local families and event organisers."
+  },
+  fisheries: {
+    en: "Fisheries & marine", tp: "Pis na solwara",
+    about: "{name} is a fisheries business based in {place}. Since {year} we have supplied fresh fish and marine products caught and handled with care.",
+    vision: "To be a leading supplier of fresh, sustainably caught seafood in {province}.",
+    mission: "We catch, handle and deliver fresh seafood while protecting our reefs and fishing grounds for the future.",
+    values: "Freshness\nSustainable fishing\nCleanliness and food safety\nFair trade with fishers",
+    services: [["Fresh fish", "Reef and pelagic fish sold fresh or chilled."], ["Ice and cold storage", "Ice supply and chilling for local fishers."]],
+    market: "We supply markets, hotels, restaurants, shops and households in {province}."
+  },
+  services: {
+    en: "Professional & consulting services", tp: "Sevis na konsaltin",
+    about: "{name} is a professional services business based in {place}. Since {year} we have helped individuals, businesses and organisations get things done properly and on time.",
+    vision: "To be the trusted partner for professional services in {province}.",
+    mission: "We provide reliable, affordable professional services with clear communication and respect for our clients' time.",
+    values: "Professionalism\nConfidentiality\nReliability\nClient focus",
+    services: [["Consulting", "Advice and support tailored to each client's needs."], ["Document and registration services", "Preparing and lodging business documents and applications."]],
+    market: "Our clients are small businesses, community groups, NGOs and government agencies in {province}."
+  },
+  other: {
+    en: "Other", tp: "Narapela",
+    about: "{name} is a locally owned business based in {place}, operating since {year}. We are committed to serving our customers with quality products and honest service.",
+    vision: "To be a leading business of our kind in {province}.",
+    mission: "We deliver quality products and services that meet our customers' needs, at fair prices, with honest and friendly service.",
+    values: "Quality\nHonesty\nCustomer service\nCommunity",
+    services: [["Main product or service", "Describe what you sell or offer."]],
+    market: "Describe who your customers are and where they come from."
+  }
+};
+
+var T = {
+  en: {
+    appName: "Profile Builder", by: "by Ready Digital Consultancy",
+    myProfiles: "My business profiles", newProfile: "New profile", importFile: "Open profile file",
+    homeIntro: "Build a professional business profile in English, then export it as a Word document or PDF. Everything you enter stays on this device.",
+    open: "Open", duplicate: "Duplicate", del: "Delete", confirmDel: "Tap again to delete",
+    example: "Example", updated: "Updated", complete: "complete", noProfiles: "No profiles yet. Tap New profile to start your first one.",
+    back: "Back", next: "Next", allProfiles: "All profiles", saved: "Saved on this device", saving: "Saving…",
+    s_basics: "Business", s_reg: "Registration", s_contact: "Contact", s_story: "Story", s_people: "People",
+    s_services: "Products", s_growth: "Plans", s_media: "Photos", s_export: "Export",
+    h_basics: "Tell us about the business", h_reg: "Registration details", h_contact: "Where to find you",
+    h_story: "Your story", h_people: "Owners and management", h_services: "Products and services",
+    h_growth: "Achievements and plans", h_media: "Logo, photos and certificates", h_export: "Design and export",
+    f_name: "Business name", f_tagline: "Tagline (short slogan)", f_entity: "Business type", f_industry: "Industry",
+    f_industryLabel: "Describe your industry in a few words", f_year: "Year you started operating", f_employees: "Number of workers",
+    f_ipa: "IPA registration number", f_tin: "IRC TIN", f_gst: "GST status", f_regDate: "Date registered with IPA",
+    f_physical: "Street, section or lot", f_village: "Village or suburb", f_llg: "LLG", f_district: "District", f_province: "Province",
+    f_postal: "Postal address", f_phone: "Phone", f_email: "Email", f_web: "Facebook page or website",
+    f_about: "About the business", f_vision: "Vision", f_mission: "Mission", f_values: "Core values (one per line)",
+    f_pname: "Full name", f_prole: "Position", f_pphone: "Phone", f_pbio: "Short background (optional)",
+    f_sname: "Product or service", f_sdesc: "Description", f_market: "Who are your customers?",
+    f_achievements: "Achievements so far (one per line)", f_plans: "Future plans (one per line)",
+    hint_tagline: "Example: Healthy seedlings for stronger cocoa blocks",
+    hint_industryLabel: "Example: Agriculture – cocoa nursery",
+    hint_ipa: "As printed on your IPA certificate, e.g. 6-123456789",
+    hint_tin: "As printed on your IRC TIN certificate",
+    hint_web: "Example: facebook.com/yourbusiness",
+    hint_values: "Short phrases work best, e.g. Honesty with our customers",
+    hint_about: "Two or three short paragraphs: who you are, where you are, what you do and since when.",
+    hint_people: "Add the owner first, then managers or key staff. Phone numbers are optional.",
+    choose: "Choose…", addPerson: "Add person", addService: "Add product or service", remove: "Remove",
+    starter: "Fill empty boxes with starter text", starterDone: "Starter text added. Edit it so it describes your business.",
+    starterNone: "All boxes already have text. Nothing was changed.", starterIndustry: "Choose an industry on the Business step to get starter text.",
+    logo: "Logo", photos: "Photos of your business", certs: "Certificates for the appendix",
+    addLogo: "Add logo", changeLogo: "Change logo", addPhotos: "Add photos", addCerts: "Add certificate photos",
+    caption: "Caption", hint_photos: "Up to 8 photos: your premises, products, team at work.",
+    hint_certs: "Take a clear, flat photo of each certificate (IPA, TIN, licences). Up to 6.",
+    imgWorking: "Preparing image…", imgError: "That file could not be read as an image. Try a JPG or PNG photo.",
+    theme: "Colour theme", checklist: "Before you export", allGood: "Everything recommended is filled in.",
+    exportWord: "Download Word (.docx)", exportPdf: "Download PDF", building: "Building your document…",
+    exported: "Your file is ready.", exportFail: "The file could not be created. Check your connection the first time you open the app, then try again.",
+    declined: "Download cancelled.", backup: "Save profile file", backupHint: "Keep a copy of this profile, or move it to another phone or computer.",
+    preview: "Quick preview", previewNote: "The exported file has a full cover page, contents with page numbers, and page footers.",
+    about: "About", aboutTitle: "About Profile Builder",
+    aboutBody: "Profile Builder helps PNG businesses and Business Development Officers create professional business profiles. It is free to use.",
+    privacyTitle: "Your information stays with you",
+    privacyBody: "Profiles are saved only on this device. Nothing is uploaded. The app never asks for National ID, licence or bank account numbers, because a business profile does not need them.",
+    clearAll: "Remove all profiles from this device", clearConfirm: "Tap again to remove everything", cleared: "All profiles removed from this device.",
+    sharedPc: "Using a shared office computer? Save a profile file for each client, then remove the profiles when you finish.",
+    close: "Close", imported: "Profile opened.", importFail: "That file is not a Profile Builder file.",
+    req: "required", untitled: "Untitled business", copyOf: "Copy of",
+    m_name: "Business name", m_entity: "Business type", m_ipa: "IPA number", m_tin: "TIN", m_contact: "Phone or email",
+    m_about: "About the business", m_vm: "Vision or mission", m_people: "At least one owner", m_services: "At least one product or service",
+    m_logo: "Logo", m_photos: "At least one photo", m_certs: "Certificate photos",
+    storageWarn: "This browser is not keeping data between visits. Save a profile file before you close the app.",
+    madeBy: "Made in Kokopo by Ready Digital Consultancy", lang: "Language"
+  },
+  tp: {
+    appName: "Profile Builder", by: "bilong Ready Digital Consultancy",
+    myProfiles: "Ol bisnis profail bilong mi", newProfile: "Nupela profail", importFile: "Opim profail fail",
+    homeIntro: "Wokim gutpela bisnis profail long Inglis, na daunlodim olsem Word o PDF. Olgeta samting yu raitim i stap long dispela fon o kompiuta tasol.",
+    open: "Opim", duplicate: "Kopim", del: "Rausim", confirmDel: "Presim gen bilong rausim",
+    example: "Eksampel", updated: "Senisim", complete: "pinis", noProfiles: "Nogat profail yet. Presim Nupela profail bilong statim.",
+    back: "Go bek", next: "Go het", allProfiles: "Olgeta profail", saved: "Seiv pinis long dispela masin", saving: "Seivim…",
+    s_basics: "Bisnis", s_reg: "Rejista", s_contact: "Kontak", s_story: "Stori", s_people: "Ol manmeri",
+    s_services: "Ol samting", s_growth: "Ol plen", s_media: "Ol foto", s_export: "Daunlod",
+    h_basics: "Tokaut long bisnis", h_reg: "Rejistreisen", h_contact: "Bisnis i stap we",
+    h_story: "Stori bilong bisnis", h_people: "Ol papa na ol bosman", h_services: "Ol samting na sevis yu salim",
+    h_growth: "Wanem yu mekim pinis na ol plen", h_media: "Logo, foto na sefiket", h_export: "Kala na daunlod",
+    f_name: "Nem bilong bisnis", f_tagline: "Sotpela toktok (slogan)", f_entity: "Kain bisnis", f_industry: "Wanem kain wok",
+    f_industryLabel: "Tokaut long wok long sampela tok", f_year: "Yia yu statim bisnis", f_employees: "Hamas wokman",
+    f_ipa: "Namba bilong IPA rejistreisen", f_tin: "IRC TIN", f_gst: "GST", f_regDate: "De yu rejista wantaim IPA",
+    f_physical: "Rot, seksen o lot", f_village: "Ples o sabeb", f_llg: "LLG", f_district: "Distrik", f_province: "Provins",
+    f_postal: "Pos adres", f_phone: "Fon", f_email: "Imel", f_web: "Facebook pes o websait",
+    f_about: "Long bisnis", f_vision: "Vision (driman)", f_mission: "Mison (wok yu laik mekim)", f_values: "Ol strongpela bilip (wanpela long wanpela lain)",
+    f_pname: "Nem olgeta", f_prole: "Posisen", f_pphone: "Fon", f_pbio: "Sotpela stori (sapos yu laik)",
+    f_sname: "Samting o sevis", f_sdesc: "Tokaut long en", f_market: "Husat i baim samting long yu?",
+    f_achievements: "Wanem yu mekim pinis (wanpela long wanpela lain)", f_plans: "Ol plen bilong bihain (wanpela long wanpela lain)",
+    hint_tagline: "Eksampel: Healthy seedlings for stronger cocoa blocks",
+    hint_industryLabel: "Eksampel: Agriculture – cocoa nursery",
+    hint_ipa: "Olsem i stap long IPA sefiket, olsem 6-123456789",
+    hint_tin: "Olsem i stap long IRC TIN sefiket",
+    hint_web: "Eksampel: facebook.com/yourbusiness",
+    hint_values: "Sotpela tok i gutpela, olsem Honesty with our customers",
+    hint_about: "Tupela o tripela sotpela hap: yu husat, yu stap we, yu mekim wanem wok na long wanem taim.",
+    hint_people: "Putim papa bilong bisnis pastaim, na bihain ol bosman. Fon namba i no mas.",
+    choose: "Makim…", addPerson: "Putim nupela man/meri", addService: "Putim nupela samting", remove: "Rausim",
+    starter: "Pulimapim ol bokis i nating long stat toktok", starterDone: "Stat toktok i go insait pinis. Senisim long tokaut long bisnis bilong yu.",
+    starterNone: "Olgeta bokis i gat toktok pinis. Nogat senis.", starterIndustry: "Makim wanpela kain wok long Bisnis step pastaim.",
+    logo: "Logo", photos: "Ol foto bilong bisnis", certs: "Ol sefiket bilong apendiks",
+    addLogo: "Putim logo", changeLogo: "Senisim logo", addPhotos: "Putim ol foto", addCerts: "Putim foto bilong sefiket",
+    caption: "Nem bilong foto", hint_photos: "Inap long 8 foto: ples wok, ol samting, ol wokman i wok.",
+    hint_certs: "Kisim klia foto bilong olgeta sefiket (IPA, TIN, laisens). Inap long 6.",
+    imgWorking: "Redim foto…", imgError: "Mipela no inap ritim dispela fail. Traim JPG o PNG foto.",
+    theme: "Kala", checklist: "Pastaim long daunlod", allGood: "Olgeta samting i stap pinis.",
+    exportWord: "Daunlod Word (.docx)", exportPdf: "Daunlod PDF", building: "Wokim dokumen…",
+    exported: "Fail i redi.", exportFail: "Mipela no inap wokim fail. Fes taim yu opim app, mas i gat intanet. Traim gen.",
+    declined: "Daunlod i stop.", backup: "Seivim profail fail", backupHint: "Holim kopi bilong profail, o kisim i go long narapela fon o kompiuta.",
+    preview: "Lukim kwik", previewNote: "Fail bai i gat kava pes, kontens wantaim pes namba, na futa long olgeta pes.",
+    about: "Long app", aboutTitle: "Long Profile Builder",
+    aboutBody: "Profile Builder i helpim ol bisnis bilong PNG na ol Business Development Officer long wokim gutpela bisnis profail. Em i fri.",
+    privacyTitle: "Infomesen bilong yu i stap wantaim yu",
+    privacyBody: "Ol profail i seiv long dispela masin tasol. Nogat samting i go long intanet. App i no save askim Nesenel ID, laisens o benk akaun namba, long wanem, bisnis profail i no nidim.",
+    clearAll: "Rausim olgeta profail long dispela masin", clearConfirm: "Presim gen bilong rausim olgeta", cleared: "Olgeta profail i raus pinis.",
+    sharedPc: "Yu yusim kompiuta bilong ofis? Seivim profail fail bilong olgeta kastoma, na rausim ol profail taim yu pinis.",
+    close: "Pinis", imported: "Profail i op pinis.", importFail: "Dispela i no Profile Builder fail.",
+    req: "mas", untitled: "Bisnis i nogat nem", copyOf: "Kopi bilong",
+    m_name: "Nem bilong bisnis", m_entity: "Kain bisnis", m_ipa: "IPA namba", m_tin: "TIN", m_contact: "Fon o imel",
+    m_about: "Stori bilong bisnis", m_vm: "Vision o mison", m_people: "Wanpela papa bilong bisnis", m_services: "Wanpela samting o sevis",
+    m_logo: "Logo", m_photos: "Wanpela foto", m_certs: "Foto bilong sefiket",
+    storageWarn: "Dispela brausa i no save holim data. Seivim profail fail pastaim long yu pasim app.",
+    madeBy: "Wokim long Kokopo long Ready Digital Consultancy", lang: "Tok ples"
+  }
+};
+var ENTITY_TP = { sole: "Wanpela papa (Sole Trader)", partnership: "Pat-nasip", company: "Kampani (Limited)", association: "Asosiesen", cooperative: "Kopretiv", other: "Narapela" };
+var GST_TP = { no: "No rejista long GST", yes: "Rejista long GST" };
+</script>
+<script>/* RDC Profile Builder — document generators (Word + PDF).
+   Shared by the app (browser) and the Node test harness. */
+var PB_THEMES = {
+  ocean:    { name: "Ocean",    primary: "0E4D64", accent: "F2A541", dark: "0A3242", light: "EAF2F5" },
+  cocoa:    { name: "Cocoa",    primary: "5A3825", accent: "D9A441", dark: "3B2416", light: "F5EEE6" },
+  garden:   { name: "Garden",   primary: "2F6B3A", accent: "E0B23A", dark: "1F4527", light: "ECF4ED" },
+  sunset:   { name: "Sunset",   primary: "8E2C2C", accent: "F0B44C", dark: "5E1C1C", light: "F8EDEA" },
+  charcoal: { name: "Charcoal", primary: "2B2D33", accent: "D2453B", dark: "17181B", light: "F0F0F2" }
+};
+
+var PB_ENTITY = {
+  sole: "Sole Trader", partnership: "Partnership", company: "Company (Limited)",
+  association: "Incorporated Association", cooperative: "Cooperative Society", other: "Other"
+};
+var PB_GST = { no: "Not registered for GST", yes: "Registered for GST" };
+
+function pbTrim(v) { return (v == null ? "" : String(v)).trim(); }
+function pbLines(v) { return pbTrim(v).split(/\n+/).map(function (s) { return s.trim(); }).filter(Boolean); }
+function pbHasImg(i) { return i && i.data && i.w && i.h; }
+function pbB64ToBytes(dataUrl) {
+  var b64 = dataUrl.split(",")[1] || "";
+  if (typeof atob === "function") {
+    var bin = atob(b64), out = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+  return new Uint8Array(Buffer.from(b64, "base64"));
+}
+function pbImgType(dataUrl) { return /^data:image\/png/.test(dataUrl) ? "png" : "jpg"; }
+function pbFit(w, h, maxW, maxH) { var s = Math.min(maxW / w, maxH / h, 1e9); return { w: Math.round(w * s), h: Math.round(h * s) }; }
+
+function pbProvince(p) {
+  p = pbTrim(p); if (!p) return "";
+  return /province|district|arob|autonomous/i.test(p) ? p : p.replace(/\s*\(.*\)$/, "") + " Province";
+}
+function pbLocation(c) {
+  return [c.village, c.llg, c.district, pbProvince(c.province)].map(pbTrim).filter(Boolean).join(", ");
+}
+
+/* Ordered list of the sections a profile will contain (only those with content). */
+function pbSections(p) {
+  var b = p.business || {}, c = p.contact || {};
+  var s = [];
+  s.push({ id: "snapshot", title: "Business at a Glance" });
+  if (pbTrim(p.about)) s.push({ id: "about", title: "About Us" });
+  if (pbTrim(p.vision) || pbTrim(p.mission) || pbLines(p.values).length) s.push({ id: "vmv", title: "Vision, Mission & Values" });
+  if ((p.people || []).some(function (x) { return pbTrim(x.name); })) s.push({ id: "people", title: "Ownership & Management" });
+  if ((p.services || []).some(function (x) { return pbTrim(x.name); }) || pbTrim(p.market)) s.push({ id: "services", title: "Products & Services" });
+  if (pbTrim(p.achievements) || pbTrim(p.plans)) s.push({ id: "growth", title: "Achievements & Future Plans" });
+  s.push({ id: "contact", title: "Location & Contact" });
+  if ((p.photos || []).some(pbHasImg)) s.push({ id: "gallery", title: "Photo Gallery" });
+  if ((p.certs || []).some(pbHasImg)) s.push({ id: "appendix", title: "Appendices" });
+  return s;
+}
+
+function pbSnapshotRows(p) {
+  var b = p.business || {}, c = p.contact || {};
+  var rows = [
+    ["Business name", b.name],
+    ["Business type", PB_ENTITY[b.entity] || ""],
+    ["Industry", b.industryLabel || ""],
+    ["IPA registration no.", b.ipa],
+    ["IRC TIN", b.tin],
+    ["GST status", b.gst ? PB_GST[b.gst] : ""],
+    ["Date registered", b.regDate ? pbDate(b.regDate) : ""],
+    ["Operating since", b.year],
+    ["Employees", b.employees],
+    ["Location", pbLocation(c)]
+  ];
+  return rows.filter(function (r) { return pbTrim(r[1]); });
+}
+function pbContactRows(p) {
+  var c = p.contact || {};
+  return [
+    ["Physical address", c.physical],
+    ["Location", pbLocation(c)],
+    ["Postal address", c.postal],
+    ["Phone", c.phone],
+    ["Email", c.email],
+    ["Facebook / website", c.web]
+  ].filter(function (r) { return pbTrim(r[1]); });
+}
+function pbDate(iso) {
+  var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || ""); if (!m) return iso || "";
+  var mon = ["January","February","March","April","May","June","July","August","September","October","November","December"][+m[2] - 1];
+  return (+m[3]) + " " + mon + " " + m[1];
+}
+var PB_CREDIT = "Profile prepared with RDC Profile Builder · Ready Digital Consultancy, Kokopo · 70254566";
+
+/* ===================== WORD (.docx) ===================== */
+function pbBuildDocx(docx, p) {
+  var D = docx, t = PB_THEMES[p.theme] || PB_THEMES.ocean;
+  var b = p.business || {}, c = p.contact || {};
+  var W = 9638; // content width in twips (A4, 2 cm margins)
+  var noBorder = { style: D.BorderStyle.NONE, size: 0, color: "FFFFFF" };
+  var noBorders = { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder, insideHorizontal: noBorder, insideVertical: noBorder };
+  var thin = { style: D.BorderStyle.SINGLE, size: 4, color: "D5D9DD" };
+  var thinBorders = { top: thin, bottom: thin, left: thin, right: thin, insideHorizontal: thin, insideVertical: thin };
+
+  function run(text, o) { o = o || {}; o.text = text; return new D.TextRun(o); }
+  function para(text, o) { o = o || {}; return new D.Paragraph({ children: [run(text, o.run)], spacing: o.spacing || { after: 140, line: 300 }, alignment: o.alignment }); }
+  function h1(text) { return new D.Paragraph({ heading: D.HeadingLevel.HEADING_1, children: [run(text)] }); }
+  function h2(text, o) { o = o || {}; return new D.Paragraph({ heading: D.HeadingLevel.HEADING_2, children: [run(text)], pageBreakBefore: !!o.pageBreakBefore }); }
+  function paras(text) { return pbLines(text).map(function (l) { return para(l); }); }
+  function bullets(list) {
+    return list.map(function (l) { return new D.Paragraph({ children: [run(l)], bullet: { level: 0 }, spacing: { after: 80 } }); });
+  }
+  function cell(children, o) {
+    o = o || {};
+    return new D.TableCell({
+      children: children, width: { size: o.w, type: D.WidthType.DXA },
+      shading: o.fill ? { fill: o.fill, type: D.ShadingType.CLEAR, color: "auto" } : undefined,
+      margins: { top: 90, bottom: 90, left: 140, right: 140 }, verticalAlign: o.v || D.VerticalAlign.TOP
+    });
+  }
+  function kvTable(rows) {
+    var a = 3100, bw = W - a;
+    return new D.Table({
+      width: { size: W, type: D.WidthType.DXA }, columnWidths: [a, bw], borders: thinBorders,
+      rows: rows.map(function (r) {
+        return new D.TableRow({ children: [
+          cell([para(r[0], { run: { bold: true, color: t.dark }, spacing: { after: 0 } })], { w: a, fill: t.light }),
+          cell(pbLines(r[1]).map(function (l) { return para(l, { spacing: { after: 0 } }); }), { w: bw })
+        ] });
+      })
+    });
+  }
+  function gridTable(head, rows, widths) {
+    var hdr = new D.TableRow({ tableHeader: true, children: head.map(function (h, i) {
+      return cell([para(h, { run: { bold: true, color: "FFFFFF" }, spacing: { after: 0 } })], { w: widths[i], fill: t.primary });
+    }) });
+    return new D.Table({
+      width: { size: W, type: D.WidthType.DXA }, columnWidths: widths, borders: thinBorders,
+      rows: [hdr].concat(rows.map(function (r, ri) {
+        return new D.TableRow({ children: r.map(function (v, i) {
+          var ls = pbLines(v); if (!ls.length) ls = [""];
+          return cell(ls.map(function (l) { return para(l, { spacing: { after: 0 }, run: i === 0 ? { bold: true } : {} }); }), { w: widths[i], fill: ri % 2 ? t.light : undefined });
+        }) });
+      }))
+    });
+  }
+  function img(i, maxW, maxH) {
+    var f = pbFit(i.w, i.h, maxW, maxH);
+    return new D.ImageRun({ data: pbB64ToBytes(i.data), type: pbImgType(i.data), transformation: { width: f.w, height: f.h } });
+  }
+  function spacer(after) { return new D.Paragraph({ children: [], spacing: { after: after || 200 } }); }
+
+  /* ---- cover ---- */
+  var year = new Date().getFullYear();
+  var coverInner = [spacer(600)];
+  if (pbHasImg(p.logo)) coverInner.push(new D.Paragraph({ children: [img(p.logo, 170, 170)], spacing: { after: 360 } }));
+  coverInner.push(para("BUSINESS PROFILE", { run: { bold: true, color: t.accent, size: 24, characterSpacing: 60 }, spacing: { after: 200 } }));
+  coverInner.push(para(pbTrim(b.name) || "Business name", { run: { bold: true, color: "FFFFFF", size: 64 }, spacing: { after: 200, line: 280 } }));
+  if (pbTrim(b.tagline)) coverInner.push(para(b.tagline, { run: { color: "FFFFFF", size: 28, italics: true }, spacing: { after: 400 } }));
+  var loc = pbLocation(c);
+  if (loc) coverInner.push(para(loc, { run: { color: "FFFFFF", size: 22 }, spacing: { after: 80 } }));
+  coverInner.push(para(String(year), { run: { color: t.accent, size: 22, bold: true }, spacing: { after: 600 } }));
+
+  var coverBand = new D.Table({
+    width: { size: W, type: D.WidthType.DXA }, columnWidths: [W], borders: noBorders,
+    rows: [new D.TableRow({ height: { value: 9600, rule: D.HeightRule.ATLEAST }, children: [
+      new D.TableCell({ children: coverInner, width: { size: W, type: D.WidthType.DXA },
+        shading: { fill: t.primary, type: D.ShadingType.CLEAR, color: "auto" },
+        margins: { top: 200, bottom: 200, left: 600, right: 600 } })
+    ] })]
+  });
+  var coverFacts = [];
+  if (pbTrim(b.ipa)) coverFacts.push("IPA Reg. " + pbTrim(b.ipa));
+  if (pbTrim(b.tin)) coverFacts.push("TIN " + pbTrim(b.tin));
+  var coverContact = [c.phone, c.email].map(pbTrim).filter(Boolean).join("   |   ");
+  var cover = [coverBand, spacer(300)];
+  if (coverFacts.length) cover.push(para(coverFacts.join("   |   "), { run: { bold: true, color: t.dark, size: 22 }, spacing: { after: 80 } }));
+  if (coverContact) cover.push(para(coverContact, { run: { color: "4A5560", size: 22 }, spacing: { after: 80 } }));
+  if (pbTrim(c.postal)) cover.push(para(c.postal, { run: { color: "4A5560", size: 22 } }));
+
+  /* ---- body ---- */
+  var secs = pbSections(p), body = [];
+  body.push(para("Contents", { run: { bold: true, size: 36, color: t.primary }, spacing: { after: 240 } }));
+  body.push(new D.TableOfContents("Contents", { hyperlink: true, headingStyleRange: "1-1" }));
+  body.push(para("If page numbers are missing, right-click the contents and choose Update Field.", { run: { size: 16, color: "8A949C", italics: true }, spacing: { before: 200 } }));
+
+  var appendixLetter = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  secs.forEach(function (s, idx) {
+    var first = [];
+    var heading = new D.Paragraph({ heading: D.HeadingLevel.HEADING_1, children: [run(s.title)], pageBreakBefore: idx === 0 || s.id === "gallery" || s.id === "appendix" });
+    body.push(heading);
+    if (s.id === "snapshot") {
+      if (pbTrim(b.tagline)) body.push(para(b.tagline, { run: { italics: true, color: t.primary, size: 24 } }));
+      body.push(kvTable(pbSnapshotRows(p)));
+    } else if (s.id === "about") {
+      body.push.apply(body, paras(p.about));
+    } else if (s.id === "vmv") {
+      if (pbTrim(p.vision)) { body.push(h2("Our Vision")); body.push.apply(body, paras(p.vision)); }
+      if (pbTrim(p.mission)) { body.push(h2("Our Mission")); body.push.apply(body, paras(p.mission)); }
+      if (pbLines(p.values).length) { body.push(h2("Our Core Values")); body.push.apply(body, bullets(pbLines(p.values))); }
+    } else if (s.id === "people") {
+      var ppl = (p.people || []).filter(function (x) { return pbTrim(x.name); });
+      body.push(gridTable(["Name", "Position", "Contact"], ppl.map(function (x) { return [x.name, x.role, x.phone]; }), [3600, 3400, W - 7000]));
+      ppl.filter(function (x) { return pbTrim(x.bio); }).forEach(function (x) {
+        body.push(h2(pbTrim(x.name) + (pbTrim(x.role) ? " — " + pbTrim(x.role) : "")));
+        body.push.apply(body, paras(x.bio));
+      });
+    } else if (s.id === "services") {
+      var sv = (p.services || []).filter(function (x) { return pbTrim(x.name); });
+      if (sv.length) body.push(gridTable(["Product / Service", "Description"], sv.map(function (x) { return [x.name, x.desc]; }), [3300, W - 3300]));
+      if (pbTrim(p.market)) { body.push(h2("Our Customers & Market")); body.push.apply(body, paras(p.market)); }
+    } else if (s.id === "growth") {
+      if (pbTrim(p.achievements)) { body.push(h2("Achievements to Date")); body.push.apply(body, bullets(pbLines(p.achievements))); }
+      if (pbTrim(p.plans)) { body.push(h2("Future Plans")); body.push.apply(body, bullets(pbLines(p.plans))); }
+    } else if (s.id === "contact") {
+      body.push(kvTable(pbContactRows(p)));
+    } else if (s.id === "gallery") {
+      var ph = (p.photos || []).filter(pbHasImg), half = Math.floor(W / 2), rows = [];
+      for (var i = 0; i < ph.length; i += 2) {
+        rows.push(new D.TableRow({ cantSplit: true, children: [ph[i], ph[i + 1]].map(function (x) {
+          if (!x) return cell([para("")], { w: half });
+          return cell([
+            new D.Paragraph({ children: [img(x, 300, 260)], alignment: D.AlignmentType.CENTER, spacing: { after: 80 } }),
+            para(pbTrim(x.caption), { run: { size: 18, color: "4A5560", italics: true }, alignment: D.AlignmentType.CENTER, spacing: { after: 160 } })
+          ], { w: half });
+        }) }));
+      }
+      body.push(new D.Table({ width: { size: W, type: D.WidthType.DXA }, columnWidths: [half, W - half], borders: noBorders, rows: rows }));
+    } else if (s.id === "appendix") {
+      var cs = (p.certs || []).filter(pbHasImg);
+      cs.forEach(function (x, k) {
+        body.push(h2("Appendix " + appendixLetter[k % 26] + ": " + (pbTrim(x.caption) || "Supporting document"), { pageBreakBefore: k > 0 }));
+        body.push(new D.Paragraph({ children: [img(x, 620, 760)], alignment: D.AlignmentType.CENTER }));
+      });
+    }
+  });
+  body.push(spacer(400));
+  body.push(para(PB_CREDIT, { run: { size: 16, color: "8A949C" }, alignment: D.AlignmentType.CENTER }));
+
+  var footer = new D.Footer({ children: [new D.Paragraph({
+    border: { top: { style: D.BorderStyle.SINGLE, size: 6, color: t.accent, space: 6 } },
+    tabStops: [{ type: D.TabStopType.RIGHT, position: W }],
+    children: [run(pbTrim(b.name) + " — Business Profile", { size: 16, color: "6B7680" }),
+      new D.TextRun({ children: ["\tPage ", D.PageNumber.CURRENT], size: 16, color: "6B7680" })]
+  })] });
+
+  var page = { size: { width: 11906, height: 16838 }, margin: { top: 1134, bottom: 1134, left: 1134, right: 1134 } };
+  return new D.Document({
+    creator: "RDC Profile Builder", title: (pbTrim(b.name) || "Business") + " Business Profile",
+    features: { updateFields: true },
+    styles: {
+      default: { document: { run: { font: "Calibri", size: 22, color: "1F2A33" } } },
+      paragraphStyles: [
+        { id: "Heading1", name: "Heading 1", basedOn: "Normal", next: "Normal", quickFormat: true,
+          run: { size: 34, bold: true, color: t.primary },
+          paragraph: { spacing: { before: 240, after: 200 }, border: { bottom: { style: D.BorderStyle.SINGLE, size: 12, color: t.accent, space: 6 } } } },
+        { id: "Heading2", name: "Heading 2", basedOn: "Normal", next: "Normal", quickFormat: true,
+          run: { size: 26, bold: true, color: t.dark }, paragraph: { spacing: { before: 280, after: 120 } } }
+      ]
+    },
+    numbering: { config: [] },
+    sections: [
+      { properties: { page: page }, children: cover },
+      { properties: { page: page, pageNumbers: { start: 1 } }, footers: { default: footer }, children: body }
+    ]
+  });
+}
+
+/* ===================== PDF ===================== */
+function pbBuildPdf(JsPDF, p) {
+  var t = PB_THEMES[p.theme] || PB_THEMES.ocean, b = p.business || {}, c = p.contact || {};
+  var doc = new JsPDF({ unit: "pt", format: "a4", compress: true });
+  var PW = 595.28, PH = 841.89, M = 56, CW = PW - 2 * M, TOP = 60, BOTTOM = PH - 64;
+  function rgb(h) { return [parseInt(h.substr(0, 2), 16), parseInt(h.substr(2, 2), 16), parseInt(h.substr(4, 2), 16)]; }
+  function fill(h) { doc.setFillColor.apply(doc, rgb(h)); }
+  function color(h) { doc.setTextColor.apply(doc, rgb(h)); }
+  function stroke(h) { doc.setDrawColor.apply(doc, rgb(h)); }
+  function font(style, size) { doc.setFont("helvetica", style || "normal"); doc.setFontSize(size); }
+  function imgFmt(d) { return pbImgType(d) === "png" ? "PNG" : "JPEG"; }
+  var y = TOP;
+  function newPage() { doc.addPage(); y = TOP; }
+  function need(h) { if (y + h > BOTTOM) newPage(); }
+
+  /* ---- cover ---- */
+  var bandH = PH * 0.64;
+  fill(t.primary); doc.rect(0, 0, PW, bandH, "F");
+  fill(t.accent); doc.rect(0, bandH, PW, 6, "F");
+  var cy = 120;
+  if (pbHasImg(p.logo)) {
+    var lf = pbFit(p.logo.w, p.logo.h, 130, 130);
+    fill("FFFFFF"); doc.roundedRect(M - 10, cy - 10, lf.w + 20, lf.h + 20, 10, 10, "F");
+    doc.addImage(p.logo.data, imgFmt(p.logo.data), M, cy, lf.w, lf.h);
+    cy += lf.h + 60;
+  } else cy += 80;
+  font("bold", 12); color(t.accent); doc.text("B U S I N E S S   P R O F I L E", M, cy); cy += 34;
+  font("bold", 34); color("FFFFFF");
+  var nameLines = doc.splitTextToSize(pbTrim(b.name) || "Business name", CW);
+  doc.text(nameLines, M, cy, { lineHeightFactor: 1.1 }); cy += nameLines.length * 38 + 6;
+  if (pbTrim(b.tagline)) { font("italic", 14); var tl = doc.splitTextToSize(b.tagline, CW); doc.text(tl, M, cy); cy += tl.length * 18 + 14; }
+  var loc = pbLocation(c);
+  font("normal", 11); color("FFFFFF");
+  if (loc) { doc.text(doc.splitTextToSize(loc, CW), M, Math.min(cy + 10, bandH - 50)); }
+  font("bold", 11); color(t.accent); doc.text(String(new Date().getFullYear()), M, bandH - 30);
+  var by = bandH + 50;
+  var facts = []; if (pbTrim(b.ipa)) facts.push("IPA Reg. " + pbTrim(b.ipa)); if (pbTrim(b.tin)) facts.push("TIN " + pbTrim(b.tin));
+  if (facts.length) { font("bold", 12); color(t.dark); doc.text(facts.join("     |     "), M, by); by += 22; }
+  font("normal", 11); color("4A5560");
+  var ct = [c.phone, c.email].map(pbTrim).filter(Boolean).join("     |     ");
+  if (ct) { doc.text(ct, M, by); by += 18; }
+  if (pbTrim(c.postal)) { doc.text(doc.splitTextToSize(c.postal, CW), M, by); by += 18; }
+  font("normal", 7.5); color("8A949C"); doc.text(PB_CREDIT, M, PH - 36);
+
+  /* ---- contents placeholder ---- */
+  newPage(); var tocPage = doc.getNumberOfPages(); var toc = [];
+
+  function heading(title, breakBefore) {
+    if (breakBefore) newPage(); else need(80);
+    font("bold", 20); color(t.primary); doc.text(title, M, y + 18);
+    stroke(t.accent); doc.setLineWidth(1.6); doc.line(M, y + 28, M + CW, y + 28);
+    toc.push({ title: title, page: doc.getNumberOfPages() });
+    y += 46;
+  }
+  function sub(title) { need(40); font("bold", 13); color(t.dark); doc.text(title, M, y + 12); y += 24; }
+  function text(str, o) {
+    o = o || {}; var size = o.size || 10.5, lh = size * 1.45, x = M + (o.indent || 0), w = CW - (o.indent || 0);
+    font(o.style || "normal", size); color(o.color || "1F2A33");
+    pbLines(str).forEach(function (para) {
+      var ls = doc.splitTextToSize(para, w);
+      ls.forEach(function (l) { need(lh); doc.text(l, x, y + size); y += lh; });
+      y += o.gap == null ? 7 : o.gap;
+    });
+  }
+  function bullets(list) {
+    list.forEach(function (l) {
+      font("normal", 10.5); var ls = doc.splitTextToSize(l, CW - 16); var lh = 15.2;
+      need(lh); fill(t.accent); doc.circle(M + 4, y + 7, 2.2, "F"); color("1F2A33");
+      ls.forEach(function (s, i) { if (i) need(lh); doc.text(s, M + 16, y + 10.5); y += lh; });
+      y += 4;
+    });
+    y += 4;
+  }
+  function table(rows, widths, o) {
+    o = o || {}; var pad = 7, lh = 13.5;
+    function rowH(r, bold) {
+      var h = 0; r.forEach(function (v, i) { font(bold ? "bold" : "normal", 10); var n = 0; pbLines(v).forEach(function (pl) { n += doc.splitTextToSize(pl, widths[i] - 2 * pad).length; }); h = Math.max(h, Math.max(n, 1) * lh); });
+      return h + 2 * pad;
+    }
+    function drawRow(r, kind, ri) {
+      var h = rowH(r, kind === "head"); need(h);
+      var x = M;
+      r.forEach(function (v, i) {
+        var bg = kind === "head" ? t.primary : (o.labelCol && i === 0 ? t.light : (o.zebra && ri % 2 ? t.light : null));
+        if (bg) { fill(bg); doc.rect(x, y, widths[i], h, "F"); }
+        stroke("D5D9DD"); doc.setLineWidth(0.5); doc.rect(x, y, widths[i], h, "S");
+        var bold = kind === "head" || (o.labelCol && i === 0) || (o.boldFirst && i === 0);
+        font(bold ? "bold" : "normal", 10); color(kind === "head" ? "FFFFFF" : (o.labelCol && i === 0 ? t.dark : "1F2A33"));
+        var ty = y + pad + 10;
+        pbLines(v).forEach(function (pl) { doc.splitTextToSize(pl, widths[i] - 2 * pad).forEach(function (s) { doc.text(s, x + pad, ty); ty += lh; }); });
+        x += widths[i];
+      });
+      y += h;
+    }
+    if (o.head) drawRow(o.head, "head", 0);
+    rows.forEach(function (r, ri) { drawRow(r, "body", ri); });
+    y += 14;
+  }
+
+  var secs = pbSections(p), letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  secs.forEach(function (s, idx) {
+    heading(s.title, idx === 0 || s.id === "gallery" || s.id === "appendix");
+    if (s.id === "snapshot") {
+      if (pbTrim(b.tagline)) text(b.tagline, { style: "italic", size: 12, color: t.primary, gap: 12 });
+      table(pbSnapshotRows(p), [170, CW - 170], { labelCol: true });
+    } else if (s.id === "about") text(p.about);
+    else if (s.id === "vmv") {
+      if (pbTrim(p.vision)) { sub("Our Vision"); text(p.vision); }
+      if (pbTrim(p.mission)) { sub("Our Mission"); text(p.mission); }
+      if (pbLines(p.values).length) { sub("Our Core Values"); bullets(pbLines(p.values)); }
+    } else if (s.id === "people") {
+      var ppl = (p.people || []).filter(function (x) { return pbTrim(x.name); });
+      table(ppl.map(function (x) { return [x.name, x.role, x.phone]; }), [180, 170, CW - 350], { head: ["Name", "Position", "Contact"], zebra: true, boldFirst: true });
+      ppl.filter(function (x) { return pbTrim(x.bio); }).forEach(function (x) { sub(pbTrim(x.name) + (pbTrim(x.role) ? " – " + pbTrim(x.role) : "")); text(x.bio); });
+    } else if (s.id === "services") {
+      var sv = (p.services || []).filter(function (x) { return pbTrim(x.name); });
+      if (sv.length) table(sv.map(function (x) { return [x.name, x.desc]; }), [165, CW - 165], { head: ["Product / Service", "Description"], zebra: true, boldFirst: true });
+      if (pbTrim(p.market)) { sub("Our Customers & Market"); text(p.market); }
+    } else if (s.id === "growth") {
+      if (pbTrim(p.achievements)) { sub("Achievements to Date"); bullets(pbLines(p.achievements)); }
+      if (pbTrim(p.plans)) { sub("Future Plans"); bullets(pbLines(p.plans)); }
+    } else if (s.id === "contact") table(pbContactRows(p), [170, CW - 170], { labelCol: true });
+    else if (s.id === "gallery") {
+      var ph = (p.photos || []).filter(pbHasImg), gap = 18, cw = (CW - gap) / 2;
+      for (var i = 0; i < ph.length; i += 2) {
+        var pair = [ph[i], ph[i + 1]].filter(Boolean);
+        var fits = pair.map(function (x) { return pbFit(x.w, x.h, cw, 210); });
+        var rowH = Math.max.apply(null, fits.map(function (f) { return f.h; })) + 30;
+        need(rowH);
+        pair.forEach(function (x, k) {
+          var f = fits[k], x0 = M + k * (cw + gap) + (cw - f.w) / 2;
+          doc.addImage(x.data, imgFmt(x.data), x0, y, f.w, f.h);
+          font("italic", 9); color("4A5560");
+          var cap = doc.splitTextToSize(pbTrim(x.caption), cw)[0] || "";
+          doc.text(cap, M + k * (cw + gap) + cw / 2, y + f.h + 14, { align: "center" });
+        });
+        y += rowH + 6;
+      }
+    } else if (s.id === "appendix") {
+      (p.certs || []).filter(pbHasImg).forEach(function (x, k) {
+        if (k > 0) newPage();
+        sub("Appendix " + letters[k % 26] + ": " + (pbTrim(x.caption) || "Supporting document"));
+        var f = pbFit(x.w, x.h, CW, BOTTOM - y - 10);
+        doc.addImage(x.data, imgFmt(x.data), M + (CW - f.w) / 2, y + 4, f.w, f.h);
+        y += f.h + 14;
+      });
+    }
+  });
+
+  /* ---- contents page ---- */
+  doc.setPage(tocPage); y = TOP;
+  font("bold", 24); color(t.primary); doc.text("Contents", M, y + 22); y += 56;
+  toc.forEach(function (e) {
+    var num = String(e.page - 1);
+    font("normal", 12); color("1F2A33"); doc.text(e.title, M, y);
+    var tw = doc.getTextWidth(e.title); font("bold", 12); color(t.primary); var nw = doc.getTextWidth(num);
+    doc.text(num, M + CW, y, { align: "right" });
+    stroke("C3CAD0"); doc.setLineDashPattern([1, 3], 0); doc.setLineWidth(0.8);
+    doc.line(M + tw + 8, y - 2, M + CW - nw - 8, y - 2); doc.setLineDashPattern([], 0);
+    y += 28;
+  });
+
+  /* ---- footers (cover excluded; numbering starts at 1 on the contents page) ---- */
+  var n = doc.getNumberOfPages();
+  for (var pg = 2; pg <= n; pg++) {
+    doc.setPage(pg);
+    stroke(t.accent); doc.setLineWidth(0.8); doc.line(M, PH - 44, M + CW, PH - 44);
+    font("normal", 8.5); color("6B7680");
+    doc.text((pbTrim(b.name) || "Business") + " — Business Profile", M, PH - 30);
+    doc.text("Page " + (pg - 1), M + CW, PH - 30, { align: "right" });
+    if (pg === n) { font("normal", 7.5); color("8A949C"); doc.text(PB_CREDIT, PW / 2, PH - 52, { align: "center" }); }
+  }
+  return doc;
+}
+
+if (typeof module !== "undefined") module.exports = { PB_THEMES: PB_THEMES, PB_ENTITY: PB_ENTITY, pbBuildDocx: pbBuildDocx, pbBuildPdf: pbBuildPdf, pbSections: pbSections };
+</script>
+<script>var SAMPLE_PROFILE = {"id": "example", "example": true, "theme": "garden", "industry": "agriculture", "business": {"name": "Gazelle Gold Cocoa Nursery", "tagline": "Healthy seedlings for stronger cocoa blocks", "entity": "sole", "industryLabel": "Agriculture \u2013 cocoa nursery", "ipa": "6-000000000", "tin": "500000000", "gst": "no", "regDate": "2025-03-14", "year": "2023", "employees": "4 full-time, 6 seasonal"}, "contact": {"physical": "Section 12, Tavui Road", "village": "Tavui", "llg": "Central Gazelle LLG", "district": "Gazelle District", "province": "East New Britain", "postal": "PO Box 000, Kokopo, ENBP", "phone": "7000 0000", "email": "gazellegold@example.com", "web": "facebook.com/gazellegoldcocoa"}, "about": "Gazelle Gold Cocoa Nursery is a family-run nursery based at Tavui in the Gazelle District of East New Britain Province. Since 2023 we have raised high-yielding, disease-tolerant cocoa seedlings for smallholder farmers rehabilitating their blocks.\nWe source budwood from certified clonal gardens and follow recommended nursery practice so every seedling leaves our site healthy and ready to plant.", "vision": "To be the most trusted source of quality cocoa planting material in East New Britain.", "mission": "We raise healthy, high-yielding cocoa seedlings, deliver them on time, and share practical advice so smallholder farmers can grow more cocoa and earn more income.", "values": "Quality in every seedling\nHonesty with our customers\nRespect for the land\nSupport for our community", "people": [{"name": "John Example", "role": "Owner & Nursery Manager", "phone": "7000 0000", "bio": "John has more than ten years of experience in cocoa farming and completed nursery management training in 2022."}, {"name": "Mary Example", "role": "Sales & Records", "phone": "7000 0001", "bio": ""}], "services": [{"name": "Clonal cocoa seedlings", "desc": "Grafted seedlings from certified high-yielding, disease-tolerant clones."}, {"name": "Hybrid seedlings", "desc": "Lower-cost seedlings for new plantings and gap filling."}, {"name": "Planting advice", "desc": "On-farm advice on spacing, shade and early care."}], "market": "Our customers are smallholder cocoa farmers, farmer groups and cooperatives across the Gazelle Peninsula, along with government and NGO rehabilitation programs.", "achievements": "Supplied over 20,000 seedlings since 2023\nRegistered with IPA and IRC in 2025\nExpanded shade house to 400 square metres", "plans": "Double nursery capacity to 50,000 seedlings a year by 2028\nAdd a budwood garden on site\nOffer delivery to farmers in Pomio and Kokopo districts", "photos": [], "certs": [], "logo": {"data": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAAFACAYAAADNkKWqAAAHcUlEQVR42u3dzXXi6hqE0RKLfDx3AgwJxPEQCEMSYO6I3Bm03T+Avrf2nt671jkI6Tklye1OAAAAAAAAAAAAAAAAWMPmEPA/vX28fz36n/F5uTtvEUDmxU0kEUCEThgRQMROFBFABE8QEUAETxARQERPDBFARE8MEUDRQwwRQNFDDBFA0UMMEUDhQwgRQOFDCBFA0UMM8QUIH0IogAjfM1xPv//fzzch5HmODoHwsa9zQwgFUPgQQiEUQOFDCIXwUQ4OgfjhPLIAccJiDQogwocQCiDChxDGM0DED+efBYgTD2vQAnTCgfPSAnSCgTVoAYofOF8F0MkEzlu3wE4gcEtsAYofOJ8F0MkCzmu3wE4QcEtsAYofON8F0MkAznsBdBKA8z+eAfriwXNBC1D8wHUhgL5kcH0IoC8XXCcC6EsF14sA+jLBdSOA4geuHwEUP3AdlQZQ/MD1VBlA8QPXVWUAxQ9cX5UBFD9wnVUGUPzA9VYZQPED193f2HwJPMv19PP/7/nmeK1i5d8is4kfewieIIqgAIqf6ImhCMYvREX4vv1nCSGVC9D66wyfRWgFpv0tsPiJ317/PVjv+twcXCYFxxq0BEcuQPETP2vQWImXIAiLlyQULUDrT/ysQSuwMoDiJyIiKIKVARQ/8fA5RNBLEETD56EpgNafWPhcVmBlAMVPJHw+EawMoPiJg88pgp4BIgo+L00BtP7EwOe2AisDKH4ggm6BsYJ8fpoCaP25+B0HK7AygOLnonc8RNAtMEBTAK0/a8dx4ZUdsABd5Dg+FqD1B7T1wAK0bnCcLEDrz0WN49W2Ag/iB7RG0C2wNYPj5hbY+gPaVqAFaMXg+FmA1h/QtgItQOsFx9ECtP6AthVoAVotOJ4WoPUHtK1AC9BawXG1AK0/oG0FWoBWCo6vBQgggG5/gZLbYAvQ7RmOswVo/QFtK9ACtEpwvC1A6w9oW4EWIGAB4nYMx73N0e3vbOebYyB0826DPy/3zQIEEEDrBMefFwbQ7S+w2ttgCxCwAHH7he+hzeb214VHvG1f1L++DbYAAbfAAALo9tftL76PdLwNtgABCxBAAN3+AiW3wRZgPG/C92IBAggggAB6/gdk8nNACzCeM+H7sQABBBBAAD3/AzL5OaAFCFiAAAJIvGHE9ySAAAIYL0CAzHsRYgECFiCAAAIIIPFmEd+XAALUB9AbYCCD3gRbgIAFCCCAAAIIIIAAAggggAACSPypAnxv8wPoh6CBDPthaAsQsAABBBBAAAEEEEAAAQQQQAABBBBgOUeHYLbzzTGIP9KGBQgggAACCAgggAACxFtg4g0mWIAAAggggAACCCCAAAIIIIAAAgiwfgA/L/fN4QJW8NNeWYDxO/3wvVmAAAIIIIAAAggggAACCCCAAB0B9MPQQIb8ELQFCFiAxJ8qwPclgAACCCCAAAIYb4KBjHkDbAECFiDxZhHfkwACCCCAAMaLECDzXoBYgIAFCCCAxBtGfD8C6DkgkMnP/yxAwAIEEEDiORO+FwH0HBDI5Od/FiBgAQIIoNvgeN6E76Pj9tcCBCxAAAF0GwyU3P4mydFhzNLPna4nz6YezTG2AAEE0G0wMOH21wL04xc4/hYggAC6DQZKbn8Tb4HHvw3+7g0mbn8tQAABdBsMdNz+WoBux3C8LUArEGhbfxagVYLjbAFagUDb+rMAAQsQt2c4vgLoNhgouf21AK0UHFcL0AoE2tafBWit4HhagFYg0Lb+LECrBcfRArQCgbb1ZwFaLzh+FqAVCLStPwvQisFxswCtQKBt/b1sAYqgNeN4sYcuuAV2UeM4uQW2AoG2HliA1g2OjwVoBbrIHRfHoK0DFiBgAVqB1o7jQdv1f3AQXPSOg2PQet27BXbx+/y4BfZfA6Dtej84KLSuIOvPde4WmMoYiB+7DKAVKAo+p/VXvQBFUBx8PvGrvgUWQZHwucTPM0DEwuehMYBWoGj4HNZf9QIUQfEQP/GrvgUWQRERP/F7hKOviT+JyfUkfMQzQP81sQb9+7H69bpcVN4+3r+cXvuwpzUofOJX8WMwlqDoiJ/rs3YBWoLWoPCJX7wEofUlifBRvwCtwK5VKHrWnwCKYE0QBU/8BFAEQfziLbA3w+C6E0ARBNebAIoguM4EUATB9SWAIgiuKwEUQXA91f9KfBEE11H13wkiguD6qf5LkUQQXDfVfyucCILrpfqvxRRBcJ1U/73AIgiuj+q/GF0EwXWRDPltMPGbZED4LEBfPjj/BdBJAM57AXQygPM9ngHGc0GET/gsQCcJzmsE0MmC89ktMG6JET4LECcRzlsBxMmE89UtMG6JET4LECcZzksLEGsQ4bMAcfLh/LMAsQYRPgFECBE+AUQIEb54BuikBeeRBWgNWoMInwAKoRAifAIohI4CwieAQojwIYBCiPAhgGIohqKHAAqhoyB8CKAQInwIoBiKoeghgIih6CGAiKHoIYCIoeghgIih6CGACKLgIYAIouAhgJRHUewQQMaHUegQQEZGUtwAAAAAAAAAAAAAAKj1C3R4lPOpuKi2AAAAAElFTkSuQmCC", "w": 320, "h": 320}};</script>
+<script>(function () {
+"use strict";
+var $ = function (s, r) { return (r || document).querySelector(s); };
+var app = $("#app"), layer = $("#layer");
+function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+function uid() { return "p" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+
+/* ---------- settings (per-viewer convenience) ---------- */
+var LS = {
+  get: function (k, d) { try { var v = localStorage.getItem("rdcpb." + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set: function (k, v) { try { localStorage.setItem("rdcpb." + k, JSON.stringify(v)); } catch (e) {} }
+};
+var lang = LS.get("lang", "en");
+function t(k) { return (T[lang] && T[lang][k]) || T.en[k] || k; }
+
+/* ---------- profile store: IndexedDB, falling back to memory ---------- */
+var Store = (function () {
+  var mem = {}, dbp = null, persistent = false;
+  function open() {
+    if (dbp) return dbp;
+    dbp = new Promise(function (res) {
+      try {
+        var rq = indexedDB.open("rdc-profile-builder", 1);
+        rq.onupgradeneeded = function () { rq.result.createObjectStore("profiles", { keyPath: "id" }); };
+        rq.onsuccess = function () { persistent = true; res(rq.result); };
+        rq.onerror = function () { res(null); };
+        rq.onblocked = function () { res(null); };
+      } catch (e) { res(null); }
+    });
+    return dbp;
+  }
+  function tx(mode, fn) {
+    return open().then(function (db) {
+      if (!db) return fn(null);
+      return new Promise(function (res) {
+        try {
+          var x = db.transaction("profiles", mode), st = x.objectStore("profiles"), out = fn(st);
+          x.oncomplete = function () { res(out && out.result !== undefined ? out.result : out); };
+          x.onerror = x.onabort = function () { res(fn(null)); };
+        } catch (e) { res(fn(null)); }
+      });
+    });
+  }
+  return {
+    isPersistent: function () { return open().then(function () { return persistent; }); },
+    all: function () {
+      return tx("readonly", function (st) { if (!st) return Object.keys(mem).map(function (k) { return mem[k]; }); return st.getAll(); })
+        .then(function (r) { return (r || []).sort(function (a, b) { return (b.updated || 0) - (a.updated || 0); }); });
+    },
+    get: function (id) { return tx("readonly", function (st) { return st ? st.get(id) : mem[id]; }); },
+    put: function (p) { mem[p.id] = p; return tx("readwrite", function (st) { if (st) st.put(p); return true; }); },
+    del: function (id) { delete mem[id]; return tx("readwrite", function (st) { if (st) st.delete(id); return true; }); },
+    clear: function () { mem = {}; return tx("readwrite", function (st) { if (st) st.clear(); return true; }); }
+  };
+})();
+
+/* ---------- downloads: artifact viewer capability, else a normal browser download ---------- */
+var dl = null;
+try { if (window.claude && window.claude.use) window.claude.use("downloads").then(function (d) { dl = d; }, function () {}); } catch (e) {}
+function saveFile(filename, blob) {
+  if (dl) return dl.save({ filename: filename, data: blob }).then(function () { return "saved"; }, function (e) {
+    if (e && e.code === "declined") return "declined"; throw e;
+  });
+  return new Promise(function (res) {
+    var url = URL.createObjectURL(blob), a = document.createElement("a");
+    a.href = url; a.download = filename; document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); a.remove(); res("saved"); }, 800);
+  });
+}
+
+/* ---------- document libraries load on first export ---------- */
+var libWait = {};
+function loadLib(name) {
+  var g = name === "docx" ? "docx" : "jspdf";
+  if (window[g]) return Promise.resolve();
+  if (libWait[name]) return libWait[name];
+  libWait[name] = new Promise(function (res, rej) {
+    var s = document.createElement("script"); s.src = LIB_URLS[name]; s.async = true;
+    s.onload = function () { window[g] ? res() : rej(new Error("lib")); };
+    s.onerror = function () { libWait[name] = null; s.remove(); rej(new Error("lib")); };
+    document.head.appendChild(s);
+  });
+  return libWait[name];
+}
+
+/* ---------- toast + dialog ---------- */
+var toastTimer;
+function toast(msg) {
+  var el = $(".toast"); if (!el) { el = document.createElement("div"); el.className = "toast"; el.setAttribute("role", "status"); document.body.appendChild(el); }
+  el.textContent = msg; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(function () { el.hidden = true; }, 3200);
+}
+function dialog(html) {
+  layer.innerHTML = '<div class="scrim" id="scrim"><div class="dialog" role="dialog" aria-modal="true">' + html + "</div></div>";
+  $("#scrim").addEventListener("click", function (e) { if (e.target.id === "scrim" || e.target.closest("[data-close]")) layer.innerHTML = ""; });
+  var f = $(".dialog button", layer); if (f) f.focus();
+}
+
+/* ---------- profile helpers ---------- */
+function blank() {
+  return { id: uid(), created: Date.now(), updated: Date.now(), theme: "ocean", industry: "", business: { name: "" }, contact: { province: "" },
+    about: "", vision: "", mission: "", values: "", people: [{ name: "", role: "Owner", phone: "", bio: "" }],
+    services: [{ name: "", desc: "" }], market: "", achievements: "", plans: "", photos: [], certs: [], logo: null };
+}
+function getPath(o, path) { return path.split(".").reduce(function (a, k) { return a == null ? a : a[k]; }, o); }
+function setPath(o, path, v) { var ks = path.split("."), last = ks.pop(), cur = o; ks.forEach(function (k) { if (cur[k] == null) cur[k] = {}; cur = cur[k]; }); cur[last] = v; }
+function filled(v) { return String(v == null ? "" : v).trim() !== ""; }
+
+function checks(p) {
+  var b = p.business || {}, c = p.contact || {};
+  return [
+    { k: "m_name", ok: filled(b.name), step: 0 },
+    { k: "m_entity", ok: filled(b.entity), step: 0 },
+    { k: "m_ipa", ok: filled(b.ipa), step: 1 },
+    { k: "m_tin", ok: filled(b.tin), step: 1 },
+    { k: "m_contact", ok: filled(c.phone) || filled(c.email), step: 2 },
+    { k: "m_about", ok: filled(p.about), step: 3 },
+    { k: "m_vm", ok: filled(p.vision) || filled(p.mission), step: 3 },
+    { k: "m_people", ok: (p.people || []).some(function (x) { return filled(x.name); }), step: 4 },
+    { k: "m_services", ok: (p.services || []).some(function (x) { return filled(x.name); }), step: 5 },
+    { k: "m_logo", ok: !!(p.logo && p.logo.data), step: 7 },
+    { k: "m_photos", ok: (p.photos || []).length > 0, step: 7 },
+    { k: "m_certs", ok: (p.certs || []).length > 0, step: 7 }
+  ];
+}
+function pct(p) { var c = checks(p); return Math.round(100 * c.filter(function (x) { return x.ok; }).length / c.length); }
+function place(p) {
+  var c = p.contact || {};
+  var town = [c.village, c.district].filter(filled)[0];
+  var prov = filled(c.province) ? pbProvince(c.province) : "Papua New Guinea";
+  return { place: town ? town + ", " + prov : prov, province: prov };
+}
+function fillTpl(s, p) {
+  var pl = place(p), b = p.business || {};
+  return s.replace(/\{name\}/g, filled(b.name) ? b.name.trim() : "Our business").replace(/\{place\}/g, pl.place)
+    .replace(/\{province\}/g, pl.province).replace(/\{year\}/g, filled(b.year) ? b.year.trim() : "the day we opened");
+}
+function industryName(k) { var i = INDUSTRIES[k]; return i ? i[lang] || i.en : ""; }
+function slug(s) { return (String(s || "Business").trim().replace(/[^A-Za-z0-9]+/g, "_").replace(/^_|_$/g, "") || "Business").slice(0, 60); }
+
+/* ---------- image intake: shrink on the device before storing ---------- */
+function readImage(file, maxDim, keepPng) {
+  return new Promise(function (res, rej) {
+    if (!file || !/^image\//.test(file.type)) return rej(new Error("type"));
+    var fr = new FileReader();
+    fr.onerror = function () { rej(new Error("read")); };
+    fr.onload = function () {
+      var im = new Image();
+      im.onerror = function () { rej(new Error("decode")); };
+      im.onload = function () {
+        var s = Math.min(1, maxDim / Math.max(im.naturalWidth, im.naturalHeight));
+        var w = Math.max(1, Math.round(im.naturalWidth * s)), h = Math.max(1, Math.round(im.naturalHeight * s));
+        var cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+        var cx = cv.getContext("2d");
+        if (!keepPng) { cx.fillStyle = "#fff"; cx.fillRect(0, 0, w, h); }
+        cx.drawImage(im, 0, 0, w, h);
+        res({ data: keepPng ? cv.toDataURL("image/png") : cv.toDataURL("image/jpeg", 0.82), w: w, h: h });
+      };
+      im.src = fr.result;
+    };
+    fr.readAsDataURL(file);
+  });
+}
+
+/* ---------- state ---------- */
+var cur = null, stepIx = 0, saveTimer = null, saveState = "saved";
+function touch() {
+  if (!cur) return; cur.updated = Date.now(); delete cur.example; saveState = "saving"; status();
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(function () { Store.put(clone(cur)).then(function () { saveState = "saved"; status(); }); }, 450);
+}
+function flush() { if (cur && saveTimer) { clearTimeout(saveTimer); saveTimer = null; return Store.put(clone(cur)); } return Promise.resolve(); }
+function status() { var el = $("#status"); if (el) el.textContent = saveState === "saving" ? t("saving") : t("saved"); }
+
+/* ---------- chrome ---------- */
+function chrome() {
+  document.documentElement.lang = lang === "tp" ? "tpi" : "en";
+  $("#tApp").textContent = t("appName"); $("#tBy").textContent = t("by");
+  $("#langEn").setAttribute("aria-pressed", lang === "en"); $("#langTp").setAttribute("aria-pressed", lang === "tp");
+  $("#aboutBtn").setAttribute("aria-label", t("about"));
+}
+function setLang(l) { lang = l; LS.set("lang", l); chrome(); if (cur) renderEditor(); else renderHome(); }
+$("#langEn").onclick = function () { setLang("en"); };
+$("#langTp").onclick = function () { setLang("tp"); };
+$("#homeBtn").onclick = function () { flush().then(function () { cur = null; renderHome(); }); };
+$("#aboutBtn").onclick = showAbout;
+
+function showAbout() {
+  dialog('<h3>' + esc(t("aboutTitle")) + '</h3><p>' + esc(t("aboutBody")) + '</p>' +
+    '<h4>' + esc(t("privacyTitle")) + '</h4><p>' + esc(t("privacyBody")) + '</p><p>' + esc(t("sharedPc")) + '</p>' +
+    '<div class="exbtns"><button class="btn danger sm" type="button" id="clearAll">' + esc(t("clearAll")) + '</button></div>' +
+    '<h4>Ready Digital Consultancy</h4><p>Kokopo, East New Britain Province<br>IPA Reg. 6-152038623<br>Phone 70254566 · tulezready@gmail.com</p>' +
+    '<div class="exbtns"><button class="btn primary" type="button" data-close>' + esc(t("close")) + '</button></div>');
+  var armed = false;
+  $("#clearAll").onclick = function () {
+    if (!armed) { armed = true; this.textContent = t("clearConfirm"); return; }
+    Store.clear().then(function () { LS.set("seeded", true); cur = null; layer.innerHTML = ""; toast(t("cleared")); renderHome(); });
+  };
+}
+
+/* ---------- home ---------- */
+function renderHome() {
+  window.scrollTo(0, 0);
+  Store.all().then(function (list) {
+    var html = '<section class="wrap hero"><h1>' + esc(t("myProfiles")) + '</h1><p>' + esc(t("homeIntro")) + '</p></section>' +
+      '<div class="wrap actions"><button class="btn primary" type="button" id="newP">' + plus() + esc(t("newProfile")) + '</button>' +
+      '<label class="btn filebtn">' + esc(t("importFile")) + '<input type="file" id="importP" accept=".json,application/json"></label></div>' +
+      '<div class="wrap" id="warnSlot"></div><section class="wrap list">';
+    if (!list.length) html += '<div class="empty">' + esc(t("noProfiles")) + '</div>';
+    list.forEach(function (p) {
+      var b = p.business || {}, n = pct(p), nm = filled(b.name) ? b.name : t("untitled");
+      var initials = nm.split(/\s+/).map(function (w) { return w[0]; }).join("").slice(0, 2).toUpperCase();
+      var th = PB_THEMES[p.theme] || PB_THEMES.ocean;
+      html += '<article class="pcard"><div class="pthumb" style="background:#' + th.primary + '">' +
+        (p.logo && p.logo.data ? '<img alt="" src="' + p.logo.data + '">' : esc(initials)) + '</div><div class="pmeta">' +
+        '<h3>' + esc(nm) + (p.example ? '<span class="chip">' + esc(t("example")) + '</span>' : '') + '</h3>' +
+        '<p>' + esc([industryName(p.industry), t("updated") + " " + new Date(p.updated).toLocaleDateString()].filter(Boolean).join(" · ")) + ' · ' + n + '% ' + esc(t("complete")) + '</p>' +
+        '<div class="meter" aria-hidden="true"><i style="width:' + n + '%"></i></div>' +
+        '<div class="prow"><button class="btn sm primary" type="button" data-open="' + p.id + '">' + esc(t("open")) + '</button>' +
+        '<button class="btn sm" type="button" data-dup="' + p.id + '">' + esc(t("duplicate")) + '</button>' +
+        '<button class="btn sm ghost danger" type="button" data-del="' + p.id + '">' + esc(t("del")) + '</button></div></div></article>';
+    });
+    html += '</section><footer class="wrap foot">' + esc(t("madeBy")) + ' · IPA Reg. 6-152038623</footer>';
+    app.innerHTML = html;
+    $("#newP").onclick = function () { cur = blank(); Store.put(clone(cur)); stepIx = 0; renderEditor(); };
+    $("#importP").onchange = importFile;
+    app.querySelectorAll("[data-open]").forEach(function (b) { b.onclick = function () { openProfile(b.dataset.open); }; });
+    app.querySelectorAll("[data-dup]").forEach(function (b) { b.onclick = function () {
+      Store.get(b.dataset.dup).then(function (p) { var c = clone(p); c.id = uid(); c.updated = Date.now(); delete c.example;
+        c.business.name = t("copyOf") + " " + (c.business.name || t("untitled")); return Store.put(c); }).then(renderHome); }; });
+    app.querySelectorAll("[data-del]").forEach(function (b) { var armed = false; b.onclick = function () {
+      if (!armed) { armed = true; b.textContent = t("confirmDel"); return; }
+      Store.del(b.dataset.del).then(renderHome); }; });
+    Store.isPersistent().then(function (ok) { if (!ok) $("#warnSlot").innerHTML = '<div class="notice">' + esc(t("storageWarn")) + '</div>'; });
+  });
+}
+function plus() { return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>'; }
+function openProfile(id) { Store.get(id).then(function (p) { if (!p) return; cur = p; stepIx = 0; renderEditor(); }); }
+function importFile(e) {
+  var f = e.target.files && e.target.files[0]; if (!f) return;
+  var fr = new FileReader();
+  fr.onload = function () {
+    try {
+      var p = JSON.parse(fr.result); if (p && p.rdcProfileBuilder && p.profile) p = p.profile;
+      if (!p || typeof p !== "object" || !p.business) throw new Error("bad");
+      var base = blank(); Object.keys(base).forEach(function (k) { if (p[k] === undefined) p[k] = base[k]; });
+      p.id = uid(); p.updated = Date.now(); delete p.example;
+      Store.put(p).then(function () { toast(t("imported")); cur = p; stepIx = 0; renderEditor(); });
+    } catch (err) { toast(t("importFail")); }
+  };
+  fr.readAsText(f);
+}
+
+/* ---------- editor ---------- */
+var STEPS = ["basics", "reg", "contact", "story", "people", "services", "growth", "media", "export"];
+function stepDone(i) {
+  var c = checks(cur);
+  var map = { 0: ["m_name", "m_entity"], 1: ["m_ipa", "m_tin"], 2: ["m_contact"], 3: ["m_about", "m_vm"], 4: ["m_people"], 5: ["m_services"], 6: [], 7: ["m_logo", "m_photos"], 8: [] };
+  if (i === 6) return filled(cur.achievements) || filled(cur.plans);
+  if (i === 8) return false;
+  return map[i].every(function (k) { return c.filter(function (x) { return x.k === k; })[0].ok; });
+}
+function renderEditor() {
+  var s = STEPS[stepIx];
+  var rail = '<nav class="rail" aria-label="Steps"><div class="wrap">' + STEPS.map(function (id, i) {
+    return '<button type="button" class="step' + (stepDone(i) ? " done" : "") + '" data-step="' + i + '"' + (i === stepIx ? ' aria-current="step"' : "") + '>' +
+      '<span class="n">' + (stepDone(i) ? "✓" : i + 1) + '</span>' + esc(t("s_" + id)) + '</button>';
+  }).join("") + '</div></nav>';
+  var nm = filled(cur.business.name) ? cur.business.name : t("untitled");
+  var body = '<section class="wrap sheet" id="sheet"><p class="bizname">' + esc(nm) + '</p><h2>' + esc(t("h_" + s)) + '</h2>' + RENDER[s]() + '</section>';
+  var nav = '<div class="navbar"><div class="wrap">' +
+    (stepIx > 0 ? '<button class="btn" type="button" id="prevB">' + esc(t("back")) + '</button>' : '<button class="btn" type="button" id="allB">' + esc(t("allProfiles")) + '</button>') +
+    '<span class="status" id="status" aria-live="polite"></span>' +
+    (stepIx < STEPS.length - 1 ? '<button class="btn primary" type="button" id="nextB">' + esc(t("next")) + '</button>' : '<button class="btn" type="button" id="allB2">' + esc(t("allProfiles")) + '</button>') +
+    '</div></div>';
+  app.innerHTML = rail + body + nav;
+  status();
+  var act = $(".step[aria-current]"); if (act) act.scrollIntoView({ block: "nearest", inline: "center" });
+  app.querySelectorAll("[data-step]").forEach(function (b) { b.onclick = function () { go(+b.dataset.step); }; });
+  var pv = $("#prevB"); if (pv) pv.onclick = function () { go(stepIx - 1); };
+  var nx = $("#nextB"); if (nx) nx.onclick = function () { go(stepIx + 1); };
+  ["#allB", "#allB2"].forEach(function (id) { var b = $(id); if (b) b.onclick = function () { flush().then(function () { cur = null; renderHome(); }); }; });
+  bindFields();
+  (WIRE[s] || function () {})();
+}
+function go(i) { stepIx = Math.max(0, Math.min(STEPS.length - 1, i)); renderEditor(); window.scrollTo(0, 0); }
+function refreshRail() {
+  app.querySelectorAll("[data-step]").forEach(function (b, i) {
+    var d = stepDone(i); b.classList.toggle("done", d); $(".n", b).textContent = d ? "✓" : i + 1;
+  });
+}
+
+/* generic field markup; values bound by data-path */
+function fld(path, labelKey, o) {
+  o = o || {}; var v = getPath(cur, path); v = v == null ? "" : v;
+  var id = "f_" + path.replace(/\./g, "_"), ctl;
+  if (o.type === "select") {
+    ctl = '<select id="' + id + '" data-path="' + path + '"><option value="">' + esc(t("choose")) + '</option>' +
+      o.options.map(function (op) { return '<option value="' + esc(op[0]) + '"' + (String(v) === op[0] ? " selected" : "") + '>' + esc(op[1]) + '</option>'; }).join("") + '</select>';
+  } else if (o.type === "textarea") {
+    ctl = '<textarea id="' + id + '" data-path="' + path + '"' + (o.tall ? ' class="tall"' : "") + '>' + esc(v) + '</textarea>';
+  } else {
+    ctl = '<input id="' + id + '" type="' + (o.type || "text") + '" data-path="' + path + '" value="' + esc(v) + '"' +
+      (o.inputmode ? ' inputmode="' + o.inputmode + '"' : "") + ' autocomplete="off">';
+  }
+  return '<div class="field' + (o.full ? " full" : "") + '"><label for="' + id + '">' + esc(t(labelKey)) + (o.req ? '<em>' + esc(t("req")) + '</em>' : "") + '</label>' + ctl +
+    (o.hint ? '<span class="hint">' + esc(t(o.hint)) + '</span>' : "") + '</div>';
+}
+function bindFields() {
+  app.querySelectorAll("[data-path]").forEach(function (el) {
+    var ev = el.tagName === "SELECT" ? "change" : "input";
+    el.addEventListener(ev, function () {
+      setPath(cur, el.dataset.path, el.value);
+      if (el.dataset.path === "industry") {
+        var ind = INDUSTRIES[el.value];
+        if (ind && !filled(cur.business.industryLabel)) { cur.business.industryLabel = ind.en; var il = $("#f_business_industryLabel"); if (il) il.value = ind.en; }
+      }
+      if (el.dataset.path === "business.name") { var bn = $(".bizname"); if (bn) bn.textContent = filled(el.value) ? el.value : t("untitled"); }
+      touch(); refreshRail();
+    });
+  });
+}
+
+var RENDER = {
+  basics: function () {
+    var ent = Object.keys(PB_ENTITY).map(function (k) { return [k, lang === "tp" ? ENTITY_TP[k] : PB_ENTITY[k]]; });
+    var ind = Object.keys(INDUSTRIES).map(function (k) { return [k, industryName(k)]; });
+    return '<div class="grid">' +
+      fld("business.name", "f_name", { full: true, req: true }) +
+      fld("business.tagline", "f_tagline", { full: true, hint: "hint_tagline" }) +
+      fld("business.entity", "f_entity", { type: "select", options: ent, req: true }) +
+      fld("industry", "f_industry", { type: "select", options: ind }) +
+      fld("business.industryLabel", "f_industryLabel", { full: true, hint: "hint_industryLabel" }) +
+      fld("business.year", "f_year", { inputmode: "numeric" }) +
+      fld("business.employees", "f_employees") + '</div>';
+  },
+  reg: function () {
+    var gst = Object.keys(PB_GST).map(function (k) { return [k, lang === "tp" ? GST_TP[k] : PB_GST[k]]; });
+    return '<div class="grid">' +
+      fld("business.ipa", "f_ipa", { hint: "hint_ipa" }) + fld("business.tin", "f_tin", { hint: "hint_tin", inputmode: "numeric" }) +
+      fld("business.regDate", "f_regDate", { type: "date" }) + fld("business.gst", "f_gst", { type: "select", options: gst }) + '</div>';
+  },
+  contact: function () {
+    var pr = PROVINCES.map(function (x) { return [x, x]; });
+    return '<div class="grid">' +
+      fld("contact.physical", "f_physical", { full: true }) + fld("contact.village", "f_village") + fld("contact.llg", "f_llg") +
+      fld("contact.district", "f_district") + fld("contact.province", "f_province", { type: "select", options: pr }) +
+      fld("contact.postal", "f_postal", { full: true }) + fld("contact.phone", "f_phone", { type: "tel" }) +
+      fld("contact.email", "f_email", { type: "email" }) + fld("contact.web", "f_web", { full: true, hint: "hint_web" }) + '</div>';
+  },
+  story: function () {
+    return '<div class="exbtns" style="margin:0 0 16px"><button class="btn" type="button" id="starterB">' + esc(t("starter")) + '</button></div><div id="starterMsg"></div>' +
+      '<div class="grid">' + fld("about", "f_about", { type: "textarea", tall: true, full: true, hint: "hint_about" }) +
+      fld("vision", "f_vision", { type: "textarea", full: true }) + fld("mission", "f_mission", { type: "textarea", full: true }) +
+      fld("values", "f_values", { type: "textarea", full: true, hint: "hint_values" }) + '</div>';
+  },
+  people: function () {
+    return '<p class="sub">' + esc(t("hint_people")) + '</p><div class="repeat" id="rep">' + (cur.people || []).map(function (x, i) {
+      return '<div class="item"><div class="ihead"><b>' + (i + 1) + '</b>' + ((cur.people.length > 1) ? '<button class="linkbtn" type="button" data-rm="' + i + '">' + esc(t("remove")) + '</button>' : "") + '</div><div class="grid">' +
+        fld("people." + i + ".name", "f_pname") + fld("people." + i + ".role", "f_prole") + fld("people." + i + ".phone", "f_pphone", { type: "tel" }) +
+        fld("people." + i + ".bio", "f_pbio", { type: "textarea", full: true }) + '</div></div>';
+    }).join("") + '</div><div class="exbtns"><button class="btn" type="button" id="addB">' + plus() + esc(t("addPerson")) + '</button></div>';
+  },
+  services: function () {
+    return '<div class="repeat" id="rep">' + (cur.services || []).map(function (x, i) {
+      return '<div class="item"><div class="ihead"><b>' + (i + 1) + '</b>' + ((cur.services.length > 1) ? '<button class="linkbtn" type="button" data-rm="' + i + '">' + esc(t("remove")) + '</button>' : "") + '</div><div class="grid">' +
+        fld("services." + i + ".name", "f_sname", { full: true }) + fld("services." + i + ".desc", "f_sdesc", { type: "textarea", full: true }) + '</div></div>';
+    }).join("") + '</div><div class="exbtns"><button class="btn" type="button" id="addB">' + plus() + esc(t("addService")) + '</button></div>' +
+      '<div class="grid" style="margin-top:22px">' + fld("market", "f_market", { type: "textarea", full: true }) + '</div>';
+  },
+  growth: function () {
+    return '<div class="grid">' + fld("achievements", "f_achievements", { type: "textarea", full: true }) + fld("plans", "f_plans", { type: "textarea", full: true }) + '</div>';
+  },
+  media: function () {
+    var logo = cur.logo && cur.logo.data;
+    return '<h3 class="section-title">' + esc(t("logo")) + '</h3><div class="logo-row"><div class="logo-box">' + (logo ? '<img alt="" src="' + cur.logo.data + '">' : "PNG / JPG") + '</div>' +
+      '<label class="btn filebtn">' + esc(t(logo ? "changeLogo" : "addLogo")) + '<input type="file" accept="image/*" id="logoIn"></label>' +
+      (logo ? '<button class="linkbtn" type="button" id="logoRm">' + esc(t("remove")) + '</button>' : "") + '</div>' +
+      '<h3 class="section-title">' + esc(t("photos")) + '</h3><p class="small">' + esc(t("hint_photos")) + '</p>' + tiles("photos", 8) +
+      '<h3 class="section-title">' + esc(t("certs")) + '</h3><p class="small">' + esc(t("hint_certs")) + '</p>' + tiles("certs", 6);
+  },
+  export: function () {
+    var c = checks(cur), miss = c.filter(function (x) { return !x.ok; });
+    var th = Object.keys(PB_THEMES).map(function (k) { var x = PB_THEMES[k];
+      return '<button type="button" class="theme" data-theme-k="' + k + '" aria-pressed="' + (cur.theme === k) + '"><span class="swatch"><i style="background:#' + x.primary + '"></i><i style="background:#' + x.accent + '"></i></span>' + esc(x.name) + '</button>'; }).join("");
+    return '<h3 class="section-title" style="margin-top:6px">' + esc(t("theme")) + '</h3><div class="themes">' + th + '</div>' +
+      '<h3 class="section-title">' + esc(t("checklist")) + '</h3>' +
+      (miss.length ? "" : '<div class="notice good">' + esc(t("allGood")) + '</div>') +
+      '<ul class="check">' + c.map(function (x) {
+        return '<li class="' + (x.ok ? "" : "miss") + '"><span class="dot" aria-hidden="true">' + (x.ok ? "✓" : "") + '</span>' +
+          (x.ok ? esc(t(x.k)) : '<button type="button" data-goto="' + x.step + '">' + esc(t(x.k)) + '</button>') + '</li>'; }).join("") + '</ul>' +
+      '<div class="exbtns" style="margin-top:20px"><button class="btn primary" type="button" id="exWord">' + esc(t("exportWord")) + '</button>' +
+      '<button class="btn primary" type="button" id="exPdf">' + esc(t("exportPdf")) + '</button></div>' +
+      '<div class="exbtns"><button class="btn" type="button" id="exJson">' + esc(t("backup")) + '</button></div><p class="small">' + esc(t("backupHint")) + '</p>' +
+      '<h3 class="section-title">' + esc(t("preview")) + '</h3><p class="small">' + esc(t("previewNote")) + '</p><div class="preview" id="pv">' + previewHtml() + '</div>';
+  }
+};
+function tiles(kind, max) {
+  var list = cur[kind] || [];
+  return '<div class="media-grid">' + list.map(function (x, i) {
+    return '<div class="mtile' + (kind === "certs" ? " cert" : "") + '"><div class="ph"><img alt="" src="' + x.data + '"></div>' +
+      '<input type="text" aria-label="' + esc(t("caption")) + '" placeholder="' + esc(t("caption")) + '" data-cap="' + kind + '" data-i="' + i + '" value="' + esc(x.caption || "") + '">' +
+      '<button class="linkbtn" type="button" data-rmimg="' + kind + '" data-i="' + i + '">' + esc(t("remove")) + '</button></div>';
+  }).join("") + '</div>' + (list.length < max ? '<div class="exbtns"><label class="btn filebtn">' + plus() + esc(t(kind === "photos" ? "addPhotos" : "addCerts")) +
+    '<input type="file" accept="image/*" multiple data-add="' + kind + '"></label></div>' : "");
+}
+
+var WIRE = {
+  story: function () {
+    $("#starterB").onclick = function () {
+      var ind = INDUSTRIES[cur.industry], msg = $("#starterMsg");
+      if (!ind) { msg.innerHTML = '<div class="notice">' + esc(t("starterIndustry")) + '</div>'; return; }
+      var changed = false;
+      ["about", "vision", "mission", "values", "market"].forEach(function (k) { if (!filled(cur[k])) { cur[k] = fillTpl(ind[k], cur); changed = true; } });
+      var emptySv = (cur.services || []).every(function (x) { return !filled(x.name) && !filled(x.desc); });
+      if (emptySv) { cur.services = ind.services.map(function (s) { return { name: s[0], desc: s[1] }; }); changed = true; }
+      if (changed) { touch(); renderEditor(); $("#starterMsg").innerHTML = '<div class="notice good">' + esc(t("starterDone")) + '</div>'; }
+      else msg.innerHTML = '<div class="notice">' + esc(t("starterNone")) + '</div>';
+    };
+  },
+  people: function () { wireRepeat("people", { name: "", role: "", phone: "", bio: "" }); },
+  services: function () { wireRepeat("services", { name: "", desc: "" }); },
+  media: function () {
+    $("#logoIn").onchange = function (e) {
+      var f = e.target.files[0]; if (!f) return; toast(t("imgWorking"));
+      readImage(f, 800, true).then(function (img) { var tt = $(".toast"); if (tt) tt.hidden = true; cur.logo = img; touch(); renderEditor(); }, function () { toast(t("imgError")); });
+    };
+    var lr = $("#logoRm"); if (lr) lr.onclick = function () { cur.logo = null; touch(); renderEditor(); };
+    app.querySelectorAll("[data-add]").forEach(function (inp) {
+      inp.onchange = function (e) {
+        var kind = inp.dataset.add, max = kind === "photos" ? 8 : 6, files = Array.prototype.slice.call(e.target.files || []);
+        files = files.slice(0, Math.max(0, max - cur[kind].length)); if (!files.length) return;
+        toast(t("imgWorking"));
+        files.reduce(function (pr, f) {
+          return pr.then(function () { return readImage(f, kind === "certs" ? 1800 : 1400, false).then(function (img) {
+            img.caption = kind === "certs" ? "" : ""; cur[kind].push(img); }, function () { toast(t("imgError")); }); });
+        }, Promise.resolve()).then(function () { var tt = $(".toast"); if (tt) tt.hidden = true; touch(); renderEditor(); });
+      };
+    });
+    app.querySelectorAll("[data-cap]").forEach(function (inp) {
+      inp.oninput = function () { cur[inp.dataset.cap][+inp.dataset.i].caption = inp.value; touch(); };
+    });
+    app.querySelectorAll("[data-rmimg]").forEach(function (b) {
+      b.onclick = function () { cur[b.dataset.rmimg].splice(+b.dataset.i, 1); touch(); renderEditor(); };
+    });
+  },
+  export: function () {
+    loadLib("docx").catch(function () {}); loadLib("jspdf").catch(function () {});
+    app.querySelectorAll("[data-theme-k]").forEach(function (b) {
+      b.onclick = function () { cur.theme = b.dataset.themeK; touch();
+        app.querySelectorAll("[data-theme-k]").forEach(function (x) { x.setAttribute("aria-pressed", x === b); });
+        $("#pv").innerHTML = previewHtml(); };
+    });
+    app.querySelectorAll("[data-goto]").forEach(function (b) { b.onclick = function () { go(+b.dataset.goto); }; });
+    $("#exWord").onclick = function () { doExport("docx", this); };
+    $("#exPdf").onclick = function () { doExport("pdf", this); };
+    $("#exJson").onclick = function () {
+      var data = JSON.stringify({ rdcProfileBuilder: 1, profile: cur });
+      saveFile(slug(cur.business.name) + "_profile.json", new Blob([data], { type: "application/json" })).then(function (r) {
+        toast(r === "declined" ? t("declined") : t("exported")); }, function () { toast(t("exportFail")); });
+    };
+  }
+};
+function wireRepeat(key, empty) {
+  $("#addB").onclick = function () { cur[key].push(clone(empty)); touch(); renderEditor();
+    var items = app.querySelectorAll(".item"); var last = items[items.length - 1]; if (last) { last.scrollIntoView({ block: "center" }); var i = $("input", last); if (i) i.focus(); } };
+  app.querySelectorAll("[data-rm]").forEach(function (b) { b.onclick = function () { cur[key].splice(+b.dataset.rm, 1); touch(); renderEditor(); }; });
+}
+
+function doExport(kind, btn) {
+  var label = btn.textContent; btn.disabled = true; btn.textContent = t("building");
+  var name = slug(cur.business.name) + "_Business_Profile." + kind;
+  flush().then(function () { return loadLib(kind === "docx" ? "docx" : "jspdf"); }).then(function () {
+    if (kind === "docx") return window.docx.Packer.toBlob(pbBuildDocx(window.docx, cur));
+    return pbBuildPdf(window.jspdf.jsPDF, cur).output("blob");
+  }).then(function (blob) { return saveFile(name, blob); })
+    .then(function (r) { toast(r === "declined" ? t("declined") : t("exported")); }, function (e) { console.error(e); toast(t("exportFail")); })
+    .then(function () { btn.disabled = false; btn.textContent = label; });
+}
+
+function previewHtml() {
+  var th = PB_THEMES[cur.theme] || PB_THEMES.ocean, b = cur.business || {}, c = cur.contact || {};
+  var P = "#" + th.primary, A = "#" + th.accent;
+  var loc = pbLocation(c);
+  var facts = [filled(b.ipa) ? "IPA Reg. " + b.ipa : "", filled(b.tin) ? "TIN " + b.tin : ""].filter(Boolean).join("  |  ");
+  var cover = '<div class="paper cover" aria-label="Cover page preview"><div class="band" style="background:' + P + ';border-bottom:4px solid ' + A + '">' +
+    (cur.logo && cur.logo.data ? '<div class="lg"><img alt="" src="' + cur.logo.data + '"></div>' : "") +
+    '<div class="kick" style="color:' + A + '">BUSINESS PROFILE</div><div class="nm">' + esc(filled(b.name) ? b.name : t("untitled")) + '</div>' +
+    (filled(b.tagline) ? '<div class="tg">' + esc(b.tagline) + '</div>' : "") + (loc ? '<div style="margin-top:6px">' + esc(loc) + '</div>' : "") + '</div>' +
+    '<div class="low">' + (facts ? '<b>' + esc(facts) + '</b><br>' : "") + esc([c.phone, c.email].filter(filled).join("  |  ")) + '</div></div>';
+  var rows = pbSnapshotRows(cur).slice(0, 8).map(function (r) { return '<tr><td style="background:#' + th.light + ';color:#' + th.dark + '">' + esc(r[0]) + '</td><td>' + esc(r[1]) + '</td></tr>'; }).join("");
+  var about = String(cur.about || "").split(/\n+/).filter(filled).slice(0, 2).map(function (x) { return '<p>' + esc(x) + '</p>'; }).join("");
+  var page = '<div class="paper page" aria-label="First page preview"><h4 style="color:' + P + ';border-color:' + A + '">Business at a Glance</h4><table>' + rows + '</table>' +
+    (about ? '<h4 style="color:' + P + ';border-color:' + A + '">About Us</h4>' + about : "") +
+    '<div class="pf" style="border-color:' + A + '"><span>' + esc(b.name || "") + ' — Business Profile</span><span>Page 2</span></div></div>';
+  return cover + page;
+}
+
+/* ---------- boot ---------- */
+chrome();
+(function boot() {
+  if (!LS.get("seeded", false)) {
+    LS.set("seeded", true);
+    var ex = clone(SAMPLE_PROFILE); ex.updated = Date.now();
+    Store.put(ex).then(renderHome);
+  } else renderHome();
+})();
+window.addEventListener("pagehide", function () { flush(); });
+document.addEventListener("visibilitychange", function () { if (document.hidden) flush(); });
+})();
+</script>
+</body></html>
