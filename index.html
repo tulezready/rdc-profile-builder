@@ -120,6 +120,9 @@ input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none;
 .mtile.cert .ph img{object-fit:contain;background:#fff}
 .mtile input{border:0;border-top:1px solid var(--line);border-radius:0;min-height:38px;font-size:13px}
 .mtile .linkbtn{align-self:flex-end;padding:6px 10px}
+.mtile .mrow{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.linkbtn.plain{color:var(--ink);text-decoration:underline;text-underline-offset:3px;position:relative;overflow:hidden;cursor:pointer}
+.pcount{position:absolute;right:6px;bottom:6px;background:var(--ink);color:var(--paper);font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;font-variant-numeric:tabular-nums}
 .logo-row{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
 .logo-box{width:96px;height:96px;border-radius:12px;border:1px dashed var(--line);background:#fff;display:grid;place-items:center;overflow:hidden;color:#8A949C;font-size:12px}
 .logo-box img{width:100%;height:100%;object-fit:contain}
@@ -312,7 +315,9 @@ var T = {
     logo: "Logo", photos: "Photos of your business", certs: "Certificates for the appendix",
     addLogo: "Add logo", changeLogo: "Change logo", addPhotos: "Add photos", addCerts: "Add certificates (PDF or photo)",
     caption: "Caption", hint_photos: "Up to 8 photos: your premises, products, team at work.",
-    hint_certs: "Add each certificate (IPA, TIN, licences) as a PDF or a clear, flat photo. Up to 6 pages.",
+    hint_certs: "Add each certificate (IPA, TIN, licences) as a PDF or a clear, flat photo. A PDF with several pages stays together as one appendix. For a paper certificate with several pages, add the first photo, then use Add page.",
+    pagesN: "{n} pages", addPage: "Add page", certCount: "{d} of {dm} certificates · {p} of {pm} pages",
+    certLimit: "Some pages were left out. A profile can hold up to {dm} certificates and {pm} pages in total.",
     pdfWorking: "Reading PDF…", pdfError: "That PDF could not be opened. Try saving it again, or add a photo of the certificate instead.",
     pdfLocked: "That PDF is password-protected. Remove the password first, or add a photo of the certificate instead.",
     pdfBig: "That PDF is larger than 15 MB. Try a smaller copy, or add a photo of the certificate instead.",
@@ -372,7 +377,9 @@ var T = {
     logo: "Logo", photos: "Ol foto bilong bisnis", certs: "Ol sefiket bilong apendiks",
     addLogo: "Putim logo", changeLogo: "Senisim logo", addPhotos: "Putim ol foto", addCerts: "Putim sefiket (PDF o foto)",
     caption: "Nem bilong foto", hint_photos: "Inap long 8 foto: ples wok, ol samting, ol wokman i wok.",
-    hint_certs: "Putim olgeta sefiket (IPA, TIN, laisens) olsem PDF o klia foto. Inap long 6 pes.",
+    hint_certs: "Putim olgeta sefiket (IPA, TIN, laisens) olsem PDF o klia foto. PDF i gat planti pes i stap wantaim olsem wanpela apendiks. Sapos pepa sefiket i gat planti pes, putim fes foto, na bihain presim Putim pes.",
+    pagesN: "{n} pes", addPage: "Putim pes", certCount: "{d} long {dm} sefiket · {p} long {pm} pes",
+    certLimit: "Sampela pes i no go insait. Wanpela profail i ken holim {dm} sefiket na {pm} pes olgeta.",
     pdfWorking: "Ritim PDF…", pdfError: "Mipela no inap opim dispela PDF. Seivim gen, o putim foto bilong sefiket.",
     pdfLocked: "Dispela PDF i gat paswod. Rausim paswod pastaim, o putim foto bilong sefiket.",
     pdfBig: "Dispela PDF i bikpela tumas (winim 15 MB). Traim liklik kopi, o putim foto bilong sefiket.",
@@ -420,6 +427,14 @@ var PB_GST = { no: "Not registered for GST", yes: "Registered for GST" };
 function pbTrim(v) { return (v == null ? "" : String(v)).trim(); }
 function pbLines(v) { return pbTrim(v).split(/\n+/).map(function (s) { return s.trim(); }).filter(Boolean); }
 function pbHasImg(i) { return i && i.data && i.w && i.h; }
+/* Certificates: each item is one document with one or more pages.
+   Older saves kept one page per item; those still work. */
+function pbCertDocs(p) {
+  return (p.certs || []).map(function (c) {
+    if (c && Array.isArray(c.pages)) return { caption: c.caption, pages: c.pages.filter(pbHasImg) };
+    return { caption: c && c.caption, pages: pbHasImg(c) ? [c] : [] };
+  }).filter(function (d) { return d.pages.length; });
+}
 function pbB64ToBytes(dataUrl) {
   var b64 = dataUrl.split(",")[1] || "";
   if (typeof atob === "function") {
@@ -452,7 +467,7 @@ function pbSections(p) {
   if (pbTrim(p.achievements) || pbTrim(p.plans)) s.push({ id: "growth", title: "Achievements & Future Plans" });
   s.push({ id: "contact", title: "Location & Contact" });
   if ((p.photos || []).some(pbHasImg)) s.push({ id: "gallery", title: "Photo Gallery" });
-  if ((p.certs || []).some(pbHasImg)) s.push({ id: "appendix", title: "Appendices" });
+  if (pbCertDocs(p).length) s.push({ id: "appendix", title: "Appendices" });
   return s;
 }
 
@@ -625,10 +640,14 @@ function pbBuildDocx(docx, p) {
       }
       body.push(new D.Table({ width: { size: W, type: D.WidthType.DXA }, columnWidths: [half, W - half], borders: noBorders, rows: rows }));
     } else if (s.id === "appendix") {
-      var cs = (p.certs || []).filter(pbHasImg);
-      cs.forEach(function (x, k) {
-        body.push(h2("Appendix " + appendixLetter[k % 26] + ": " + (pbTrim(x.caption) || "Supporting document"), { pageBreakBefore: k > 0 }));
-        body.push(new D.Paragraph({ children: [img(x, 620, 760)], alignment: D.AlignmentType.CENTER }));
+      pbCertDocs(p).forEach(function (d, k) {
+        var label = "Appendix " + appendixLetter[k % 26] + ": " + (pbTrim(d.caption) || "Supporting document"), n = d.pages.length;
+        d.pages.forEach(function (pg, j) {
+          if (j === 0) body.push(h2(label + (n > 1 ? " (" + n + " pages)" : ""), { pageBreakBefore: k > 0 }));
+          else body.push(new D.Paragraph({ pageBreakBefore: true, spacing: { after: 120 },
+            children: [run(label + " \u2014 page " + (j + 1) + " of " + n, { size: 18, color: "6B7680", italics: true })] }));
+          body.push(new D.Paragraph({ children: [img(pg, 620, j === 0 ? 760 : 800)], alignment: D.AlignmentType.CENTER }));
+        });
       });
     }
   });
@@ -803,12 +822,16 @@ function pbBuildPdf(JsPDF, p) {
         y += rowH + 6;
       }
     } else if (s.id === "appendix") {
-      (p.certs || []).filter(pbHasImg).forEach(function (x, k) {
-        if (k > 0) newPage();
-        sub("Appendix " + letters[k % 26] + ": " + (pbTrim(x.caption) || "Supporting document"));
-        var f = pbFit(x.w, x.h, CW, BOTTOM - y - 10);
-        doc.addImage(x.data, imgFmt(x.data), M + (CW - f.w) / 2, y + 4, f.w, f.h);
-        y += f.h + 14;
+      pbCertDocs(p).forEach(function (d, k) {
+        var label = "Appendix " + letters[k % 26] + ": " + (pbTrim(d.caption) || "Supporting document"), n = d.pages.length;
+        d.pages.forEach(function (x, j) {
+          if (k > 0 || j > 0) newPage();
+          if (j === 0) sub(label + (n > 1 ? " (" + n + " pages)" : ""));
+          else { font("italic", 9); color("6B7680"); doc.text(label + " \u2013 page " + (j + 1) + " of " + n, M, y + 9); y += 18; }
+          var f = pbFit(x.w, x.h, CW, BOTTOM - y - 10);
+          doc.addImage(x.data, imgFmt(x.data), M + (CW - f.w) / 2, y + 4, f.w, f.h);
+          y += f.h + 14;
+        });
       });
     }
   });
@@ -839,7 +862,7 @@ function pbBuildPdf(JsPDF, p) {
   return doc;
 }
 
-if (typeof module !== "undefined") module.exports = { PB_THEMES: PB_THEMES, PB_ENTITY: PB_ENTITY, pbBuildDocx: pbBuildDocx, pbBuildPdf: pbBuildPdf, pbSections: pbSections };
+if (typeof module !== "undefined") module.exports = { PB_THEMES: PB_THEMES, PB_ENTITY: PB_ENTITY, pbBuildDocx: pbBuildDocx, pbBuildPdf: pbBuildPdf, pbSections: pbSections, pbCertDocs: pbCertDocs };
 </script>
 <script>var SAMPLE_PROFILE = {"id": "example", "example": true, "theme": "garden", "industry": "agriculture", "business": {"name": "Gazelle Gold Cocoa Nursery", "tagline": "Healthy seedlings for stronger cocoa blocks", "entity": "sole", "industryLabel": "Agriculture \u2013 cocoa nursery", "ipa": "6-000000000", "tin": "500000000", "gst": "no", "regDate": "2025-03-14", "year": "2023", "employees": "4 full-time, 6 seasonal"}, "contact": {"physical": "Section 12, Tavui Road", "village": "Tavui", "llg": "Central Gazelle LLG", "district": "Gazelle District", "province": "East New Britain", "postal": "PO Box 000, Kokopo, ENBP", "phone": "7000 0000", "email": "gazellegold@example.com", "web": "facebook.com/gazellegoldcocoa"}, "about": "Gazelle Gold Cocoa Nursery is a family-run nursery based at Tavui in the Gazelle District of East New Britain Province. Since 2023 we have raised high-yielding, disease-tolerant cocoa seedlings for smallholder farmers rehabilitating their blocks.\nWe source budwood from certified clonal gardens and follow recommended nursery practice so every seedling leaves our site healthy and ready to plant.", "vision": "To be the most trusted source of quality cocoa planting material in East New Britain.", "mission": "We raise healthy, high-yielding cocoa seedlings, deliver them on time, and share practical advice so smallholder farmers can grow more cocoa and earn more income.", "values": "Quality in every seedling\nHonesty with our customers\nRespect for the land\nSupport for our community", "people": [{"name": "John Example", "role": "Owner & Nursery Manager", "phone": "7000 0000", "bio": "John has more than ten years of experience in cocoa farming and completed nursery management training in 2022."}, {"name": "Mary Example", "role": "Sales & Records", "phone": "7000 0001", "bio": ""}], "services": [{"name": "Clonal cocoa seedlings", "desc": "Grafted seedlings from certified high-yielding, disease-tolerant clones."}, {"name": "Hybrid seedlings", "desc": "Lower-cost seedlings for new plantings and gap filling."}, {"name": "Planting advice", "desc": "On-farm advice on spacing, shade and early care."}], "market": "Our customers are smallholder cocoa farmers, farmer groups and cooperatives across the Gazelle Peninsula, along with government and NGO rehabilitation programs.", "achievements": "Supplied over 20,000 seedlings since 2023\nRegistered with IPA and IRC in 2025\nExpanded shade house to 400 square metres", "plans": "Double nursery capacity to 50,000 seedlings a year by 2028\nAdd a budwood garden on site\nOffer delivery to farmers in Pomio and Kokopo districts", "photos": [], "certs": [], "logo": {"data": "data:image/png;base64,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", "w": 320, "h": 320}};</script>
 <script>(function () {
@@ -978,6 +1001,23 @@ function blank() {
     about: "", vision: "", mission: "", values: "", people: [{ name: "", role: "Owner", phone: "", bio: "" }],
     services: [{ name: "", desc: "" }], market: "", achievements: "", plans: "", photos: [], certs: [], logo: null };
 }
+/* Certificates are stored as documents: { caption, pages: [ {data, w, h} ] }.
+   Older saves (one page per item, captions ending "(page n)") are merged back into documents. */
+var CERT_MAX_DOCS = 10, CERT_MAX_PAGES = 40;
+function normCerts(p) {
+  var out = [];
+  (p.certs || []).forEach(function (c) {
+    if (!c) return;
+    if (Array.isArray(c.pages)) { out.push(c); return; }
+    var m = /^(.*) \(page (\d+)\)$/.exec(c.caption || ""), last = out[out.length - 1];
+    var pg = { data: c.data, w: c.w, h: c.h };
+    if (m && last && last._base === m[1] && +m[2] === last.pages.length + 1) { last.pages.push(pg); return; }
+    out.push({ caption: m ? m[1] : (c.caption || ""), pages: [pg], _base: m ? m[1] : null });
+  });
+  out.forEach(function (d) { delete d._base; });
+  p.certs = out; return p;
+}
+function certPageCount() { return (cur.certs || []).reduce(function (n, d) { return n + d.pages.length; }, 0); }
 function getPath(o, path) { return path.split(".").reduce(function (a, k) { return a == null ? a : a[k]; }, o); }
 function setPath(o, path, v) { var ks = path.split("."), last = ks.pop(), cur = o; ks.forEach(function (k) { if (cur[k] == null) cur[k] = {}; cur = cur[k]; }); cur[last] = v; }
 function filled(v) { return String(v == null ? "" : v).trim() !== ""; }
@@ -1111,7 +1151,7 @@ function renderHome() {
   });
 }
 function plus() { return '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>'; }
-function openProfile(id) { Store.get(id).then(function (p) { if (!p) return; cur = p; stepIx = 0; renderEditor(); }); }
+function openProfile(id) { Store.get(id).then(function (p) { if (!p) return; cur = normCerts(p); stepIx = 0; renderEditor(); }); }
 function importFile(e) {
   var f = e.target.files && e.target.files[0]; if (!f) return;
   var fr = new FileReader();
@@ -1120,7 +1160,7 @@ function importFile(e) {
       var p = JSON.parse(fr.result); if (p && p.rdcProfileBuilder && p.profile) p = p.profile;
       if (!p || typeof p !== "object" || !p.business) throw new Error("bad");
       var base = blank(); Object.keys(base).forEach(function (k) { if (p[k] === undefined) p[k] = base[k]; });
-      p.id = uid(); p.updated = Date.now(); delete p.example;
+      p.id = uid(); p.updated = Date.now(); delete p.example; normCerts(p);
       Store.put(p).then(function () { toast(t("imported")); cur = p; stepIx = 0; renderEditor(); });
     } catch (err) { toast(t("importFail")); }
   };
@@ -1253,7 +1293,7 @@ var RENDER = {
       '<label class="btn filebtn">' + esc(t(logo ? "changeLogo" : "addLogo")) + '<input type="file" accept="image/*" id="logoIn"></label>' +
       (logo ? '<button class="linkbtn" type="button" id="logoRm">' + esc(t("remove")) + '</button>' : "") + '</div>' +
       '<h3 class="section-title">' + esc(t("photos")) + '</h3><p class="small">' + esc(t("hint_photos")) + '</p>' + tiles("photos", 8) +
-      '<h3 class="section-title">' + esc(t("certs")) + '</h3><p class="small">' + esc(t("hint_certs")) + '</p>' + tiles("certs", 6);
+      '<h3 class="section-title">' + esc(t("certs")) + '</h3><p class="small">' + esc(t("hint_certs")) + '</p>' + certTiles();
   },
   export: function () {
     var c = checks(cur), miss = c.filter(function (x) { return !x.ok; });
@@ -1281,6 +1321,35 @@ function tiles(kind, max) {
     '<input type="file" accept="' + (kind === "certs" ? "image/*,application/pdf,.pdf" : "image/*") + '" multiple data-add="' + kind + '"></label></div>' : "");
 }
 
+function certTiles() {
+  var docs = cur.certs || [], pages = certPageCount(), roomPages = CERT_MAX_PAGES - pages;
+  return '<div class="media-grid">' + docs.map(function (d, i) {
+    var n = d.pages.length;
+    return '<div class="mtile cert"><div class="ph"><img alt="" src="' + d.pages[0].data + '">' +
+      (n > 1 ? '<span class="pcount">' + esc(t("pagesN").replace("{n}", n)) + '</span>' : "") + '</div>' +
+      '<input type="text" aria-label="' + esc(t("caption")) + '" placeholder="' + esc(t("caption")) + '" data-cap="certs" data-i="' + i + '" value="' + esc(d.caption || "") + '">' +
+      '<div class="mrow">' + (roomPages > 0 ? '<label class="linkbtn plain filebtn">' + esc(t("addPage")) +
+        '<input type="file" accept="image/*,application/pdf,.pdf" multiple data-addpage="' + i + '"></label>' : "<span></span>") +
+      '<button class="linkbtn" type="button" data-rmimg="certs" data-i="' + i + '">' + esc(t("remove")) + '</button></div></div>';
+  }).join("") + '</div>' +
+  '<p class="small">' + esc(t("certCount").replace("{d}", docs.length).replace("{dm}", CERT_MAX_DOCS).replace("{p}", pages).replace("{pm}", CERT_MAX_PAGES)) + '</p>' +
+  (docs.length < CERT_MAX_DOCS && roomPages > 0 ? '<div class="exbtns"><label class="btn filebtn">' + plus() + esc(t("addCerts")) +
+    '<input type="file" accept="image/*,application/pdf,.pdf" multiple data-add="certs"></label></div>' : "");
+}
+/* Read one file into certificate pages (a PDF gives all its pages, a photo gives one). */
+function fileToPages(f, room) {
+  if (isPdf(f)) return readPdf(f, room, 1700).then(function (pages) {
+    var total = pages.length ? pages[0].pages : 0;
+    return { pages: pages.map(function (x) { return { data: x.data, w: x.w, h: x.h }; }), cut: total > pages.length };
+  });
+  return readImage(f, 1700, false).then(function (img) { return { pages: [img], cut: false }; });
+}
+function fileError(err, f) {
+  if (!isPdf(f)) return toast(t("imgError"));
+  toast(t(err && err.name === "PasswordException" ? "pdfLocked" : err && err.message === "big" ? "pdfBig" : err && err.message === "lib" ? "pdfLib" : "pdfError"));
+}
+function hideToast() { var tt = $(".toast"); if (tt) tt.hidden = true; }
+
 var WIRE = {
   story: function () {
     $("#starterB").onclick = function () {
@@ -1304,28 +1373,51 @@ var WIRE = {
     var lr = $("#logoRm"); if (lr) lr.onclick = function () { cur.logo = null; touch(); renderEditor(); };
     app.querySelectorAll("[data-add]").forEach(function (inp) {
       inp.onchange = function (e) {
-        var kind = inp.dataset.add, max = kind === "photos" ? 8 : 6, files = Array.prototype.slice.call(e.target.files || []);
-        files = files.slice(0, Math.max(0, max - cur[kind].length)); if (!files.length) return;
+        var kind = inp.dataset.add, files = Array.prototype.slice.call(e.target.files || []);
+        if (!files.length) return;
+        if (kind === "photos") {
+          files = files.slice(0, Math.max(0, 8 - cur.photos.length)); if (!files.length) return;
+          toast(t("imgWorking"));
+          files.reduce(function (pr, f) {
+            return pr.then(function () { return readImage(f, 1400, false).then(function (img) { img.caption = ""; cur.photos.push(img); }, function () { toast(t("imgError")); }); });
+          }, Promise.resolve()).then(function () { hideToast(); touch(); renderEditor(); });
+          return;
+        }
+        // certificates: each file becomes one certificate, however many pages it has
+        var cut = false, failed = false;
         toast(t(files.some(isPdf) ? "pdfWorking" : "imgWorking"));
         files.reduce(function (pr, f) {
           return pr.then(function () {
-            var room = max - cur[kind].length; if (room <= 0) return;
-            if (kind === "certs" && isPdf(f)) {
-              return readPdf(f, room, 1800).then(function (pages) {
-                var base = nameToCaption(f.name);
-                pages.forEach(function (img) {
-                  img.caption = img.pages > 1 ? base + " (page " + img.page + ")" : base;
-                  delete img.page; delete img.pages; cur.certs.push(img);
-                });
-              }, function (err) {
-                toast(t(err && err.name === "PasswordException" ? "pdfLocked" : err && err.message === "big" ? "pdfBig" : err && err.message === "lib" ? "pdfLib" : "pdfError"));
-              });
-            }
-            return readImage(f, kind === "certs" ? 1800 : 1400, false).then(function (img) {
-              img.caption = kind === "certs" ? nameToCaption(f.name) : ""; cur[kind].push(img);
-            }, function () { toast(t("imgError")); });
+            var room = CERT_MAX_PAGES - certPageCount();
+            if (room <= 0 || cur.certs.length >= CERT_MAX_DOCS) { cut = true; return; }
+            return fileToPages(f, room).then(function (r) {
+              if (r.pages.length) cur.certs.push({ caption: nameToCaption(f.name), pages: r.pages });
+              if (r.cut) cut = true;
+            }, function (err) { failed = true; fileError(err, f); });
           });
-        }, Promise.resolve()).then(function () { touch(); renderEditor(); });
+        }, Promise.resolve()).then(function () {
+          if (!failed) hideToast();
+          touch(); renderEditor();
+          if (cut) toast(t("certLimit").replace("{dm}", CERT_MAX_DOCS).replace("{pm}", CERT_MAX_PAGES));
+        });
+      };
+    });
+    app.querySelectorAll("[data-addpage]").forEach(function (inp) {
+      inp.onchange = function (e) {
+        var d = cur.certs[+inp.dataset.addpage], files = Array.prototype.slice.call(e.target.files || []), cut = false, failed = false;
+        if (!d || !files.length) return;
+        toast(t(files.some(isPdf) ? "pdfWorking" : "imgWorking"));
+        files.reduce(function (pr, f) {
+          return pr.then(function () {
+            var room = CERT_MAX_PAGES - certPageCount(); if (room <= 0) { cut = true; return; }
+            return fileToPages(f, room).then(function (r) { Array.prototype.push.apply(d.pages, r.pages); if (r.cut) cut = true; },
+              function (err) { failed = true; fileError(err, f); });
+          });
+        }, Promise.resolve()).then(function () {
+          if (!failed) hideToast();
+          touch(); renderEditor();
+          if (cut) toast(t("certLimit").replace("{dm}", CERT_MAX_DOCS).replace("{pm}", CERT_MAX_PAGES));
+        });
       };
     });
     app.querySelectorAll("[data-cap]").forEach(function (inp) {
