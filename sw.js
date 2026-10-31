@@ -1,6 +1,6 @@
 /* Offline cache for RDC Profile Builder. Bump VERSION on every release. */
-const VERSION = "rdc-pb-v1";
-const CORE = ["./", "index.html", "manifest.webmanifest", "lib/docx.iife.js", "lib/jspdf.umd.min.js", "icons/icon-192.png", "icons/icon-512.png"];
+const VERSION = "rdc-pb-v2";
+const CORE = ["./", "index.html", "manifest.webmanifest", "lib/docx.iife.js", "lib/jspdf.umd.min.js", "lib/pdf.min.js", "lib/pdf.worker.min.js", "icons/icon-192.png", "icons/icon-512.png"];
 self.addEventListener("install", e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(CORE)).then(() => self.skipWaiting())); });
 self.addEventListener("activate", e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim())); });
 self.addEventListener("fetch", e => {

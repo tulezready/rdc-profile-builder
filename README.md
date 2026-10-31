@@ -1,22 +1,20 @@
-# RDC Profile Builder — deploy bundle (v1)
+# RDC Profile Builder — deploy bundle (v2)
 
 Offline-first web app. No server code, no database, no running cost.
 
-## Put it online (Cloudflare Pages, free)
-1. Cloudflare dashboard → Workers & Pages → Create → Pages → **Upload assets**.
-2. Name the project (e.g. `rdc-profile-builder`) and upload this whole folder.
-3. Share the `*.pages.dev` link. On Android, Chrome offers **Add to Home screen / Install**.
-
-After the first visit the app works with no internet, including Word and PDF export
-(the document libraries are in `lib/` and cached by `sw.js`).
+## How it is hosted
+This repo is connected to Cloudflare Pages (no build step, output directory `/`).
+Every push to `main` deploys automatically. After the first visit the app works with
+no internet, including Word/PDF export and PDF certificates (libraries in `lib/`,
+cached by `sw.js`).
 
 ## Releasing an update
-Change the files, bump `VERSION` in `sw.js` (e.g. `rdc-pb-v2`), upload again.
-Users get the new version the next time they open the app online.
+Change the files, bump `VERSION` in `sw.js` (e.g. `rdc-pb-v3`), commit and push to `main`.
+Installed apps pick up the new version the next time they open online.
 
 ## Files
 - `index.html` — the whole app (wizard, starter text, Word/PDF builders)
-- `lib/` — docx 9.5.1 and jsPDF 2.5.1, served locally so export works offline
+- `lib/` — docx 9.5.1, jsPDF 2.5.1 and pdf.js 3.11.174, served locally so export and PDF certificates work offline
 - `sw.js` — offline cache
 - `manifest.webmanifest`, `icons/` — install to home screen
 - `_headers` — security headers for Cloudflare Pages (CSP, no framing, no camera/mic/location)
@@ -31,3 +29,9 @@ Users get the new version the next time they open the app online.
 - Defense in depth — the `_headers` CSP only lets the page load its own files and
   Google Fonts, and blocks framing. Deny by default, explicitly permit:
   NDC Session 3; Easttom Ch. 3. Layered security: NDC Session 5; Easttom Ch. 1.
+- PDF certificates — each PDF page is turned into a flat picture on the device before it
+  goes into the profile. Scripts, links, forms or attachments inside a PDF never reach the
+  exported Word/PDF file, and pdf.js runs with script evaluation switched off. This is a
+  countermeasure against malicious documents ("Defending Against Virus Attacks": Easttom Ch. 9; Session 2's
+  vulnerability → threat → countermeasure chain). Password-locked and oversized (>15 MB)
+  PDFs are refused with a clear message.

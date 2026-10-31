@@ -2,7 +2,7 @@
 <meta name="claude:viewport-fit-sides" content="cover">
 <meta name="theme-color" content="#14302F">
 <link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/icon-192.png">
-<script>var LIB_URLS = {"docx": "lib/docx.iife.js", "jspdf": "lib/jspdf.umd.min.js"};
+<script>var LIB_URLS = {"docx": "lib/docx.iife.js", "jspdf": "lib/jspdf.umd.min.js", "pdf": "lib/pdf.min.js", "pdfworker": "lib/pdf.worker.min.js"};
 if ("serviceWorker" in navigator) addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600;700&display=swap">
@@ -298,9 +298,13 @@ var T = {
     starter: "Fill empty boxes with starter text", starterDone: "Starter text added. Edit it so it describes your business.",
     starterNone: "All boxes already have text. Nothing was changed.", starterIndustry: "Choose an industry on the Business step to get starter text.",
     logo: "Logo", photos: "Photos of your business", certs: "Certificates for the appendix",
-    addLogo: "Add logo", changeLogo: "Change logo", addPhotos: "Add photos", addCerts: "Add certificate photos",
+    addLogo: "Add logo", changeLogo: "Change logo", addPhotos: "Add photos", addCerts: "Add certificates (PDF or photo)",
     caption: "Caption", hint_photos: "Up to 8 photos: your premises, products, team at work.",
-    hint_certs: "Take a clear, flat photo of each certificate (IPA, TIN, licences). Up to 6.",
+    hint_certs: "Add each certificate (IPA, TIN, licences) as a PDF or a clear, flat photo. Up to 6 pages.",
+    pdfWorking: "Reading PDF…", pdfError: "That PDF could not be opened. Try saving it again, or add a photo of the certificate instead.",
+    pdfLocked: "That PDF is password-protected. Remove the password first, or add a photo of the certificate instead.",
+    pdfBig: "That PDF is larger than 15 MB. Try a smaller copy, or add a photo of the certificate instead.",
+    pdfLib: "PDF reading needs internet the first time. Connect once, then try again.",
     imgWorking: "Preparing image…", imgError: "That file could not be read as an image. Try a JPG or PNG photo.",
     theme: "Colour theme", checklist: "Before you export", allGood: "Everything recommended is filled in.",
     exportWord: "Download Word (.docx)", exportPdf: "Download PDF", building: "Building your document…",
@@ -354,9 +358,13 @@ var T = {
     starter: "Pulimapim ol bokis i nating long stat toktok", starterDone: "Stat toktok i go insait pinis. Senisim long tokaut long bisnis bilong yu.",
     starterNone: "Olgeta bokis i gat toktok pinis. Nogat senis.", starterIndustry: "Makim wanpela kain wok long Bisnis step pastaim.",
     logo: "Logo", photos: "Ol foto bilong bisnis", certs: "Ol sefiket bilong apendiks",
-    addLogo: "Putim logo", changeLogo: "Senisim logo", addPhotos: "Putim ol foto", addCerts: "Putim foto bilong sefiket",
+    addLogo: "Putim logo", changeLogo: "Senisim logo", addPhotos: "Putim ol foto", addCerts: "Putim sefiket (PDF o foto)",
     caption: "Nem bilong foto", hint_photos: "Inap long 8 foto: ples wok, ol samting, ol wokman i wok.",
-    hint_certs: "Kisim klia foto bilong olgeta sefiket (IPA, TIN, laisens). Inap long 6.",
+    hint_certs: "Putim olgeta sefiket (IPA, TIN, laisens) olsem PDF o klia foto. Inap long 6 pes.",
+    pdfWorking: "Ritim PDF…", pdfError: "Mipela no inap opim dispela PDF. Seivim gen, o putim foto bilong sefiket.",
+    pdfLocked: "Dispela PDF i gat paswod. Rausim paswod pastaim, o putim foto bilong sefiket.",
+    pdfBig: "Dispela PDF i bikpela tumas (winim 15 MB). Traim liklik kopi, o putim foto bilong sefiket.",
+    pdfLib: "Fes taim yu ritim PDF, mas i gat intanet. Konek wanpela taim, na traim gen.",
     imgWorking: "Redim foto…", imgError: "Mipela no inap ritim dispela fail. Traim JPG o PNG foto.",
     theme: "Kala", checklist: "Pastaim long daunlod", allGood: "Olgeta samting i stap pinis.",
     exportWord: "Daunlod Word (.docx)", exportPdf: "Daunlod PDF", building: "Wokim dokumen…",
@@ -895,8 +903,9 @@ function saveFile(filename, blob) {
 
 /* ---------- document libraries load on first export ---------- */
 var libWait = {};
+var LIB_GLOBAL = { docx: "docx", jspdf: "jspdf", pdf: "pdfjsLib", pdfworker: "pdfjsWorker" };
 function loadLib(name) {
-  var g = name === "docx" ? "docx" : "jspdf";
+  var g = LIB_GLOBAL[name];
   if (window[g]) return Promise.resolve();
   if (libWait[name]) return libWait[name];
   libWait[name] = new Promise(function (res, rej) {
@@ -906,6 +915,37 @@ function loadLib(name) {
     document.head.appendChild(s);
   });
   return libWait[name];
+}
+
+/* ---------- PDF certificates: each page becomes a flat image, made on the device ----------
+   The worker script is loaded first so pdf.js runs on the main thread (no separate worker file needed). */
+var PDF_MAX_BYTES = 15 * 1024 * 1024;
+function isPdf(f) { return f && (f.type === "application/pdf" || /\.pdf$/i.test(f.name || "")); }
+function readPdf(file, maxPages, maxDim) {
+  if (file.size > PDF_MAX_BYTES) return Promise.reject(new Error("big"));
+  return loadLib("pdfworker").then(function () { return loadLib("pdf"); }).then(function () {
+    return file.arrayBuffer();
+  }).then(function (buf) {
+    return window.pdfjsLib.getDocument({ data: new Uint8Array(buf), isEvalSupported: false, enableXfa: false }).promise;
+  }).then(function (pdf) {
+    var n = Math.min(pdf.numPages, maxPages), out = [], chain = Promise.resolve();
+    for (var i = 1; i <= n; i++) (function (num) {
+      chain = chain.then(function () { return pdf.getPage(num); }).then(function (page) {
+        var v1 = page.getViewport({ scale: 1 });
+        var vp = page.getViewport({ scale: Math.min(4, maxDim / Math.max(v1.width, v1.height)) });
+        var cv = document.createElement("canvas"); cv.width = Math.round(vp.width); cv.height = Math.round(vp.height);
+        var cx = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height);
+        return page.render({ canvasContext: cx, viewport: vp }).promise.then(function () {
+          out.push({ data: cv.toDataURL("image/jpeg", 0.85), w: cv.width, h: cv.height, page: num, pages: pdf.numPages });
+          page.cleanup(); cv.width = cv.height = 0;
+        });
+      });
+    })(i);
+    return chain.then(function () { pdf.destroy(); return out; });
+  });
+}
+function nameToCaption(name) {
+  return String(name || "").replace(/\.[a-z0-9]+$/i, "").replace(/[_\-]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 80);
 }
 
 /* ---------- toast + dialog ---------- */
@@ -1226,7 +1266,7 @@ function tiles(kind, max) {
       '<input type="text" aria-label="' + esc(t("caption")) + '" placeholder="' + esc(t("caption")) + '" data-cap="' + kind + '" data-i="' + i + '" value="' + esc(x.caption || "") + '">' +
       '<button class="linkbtn" type="button" data-rmimg="' + kind + '" data-i="' + i + '">' + esc(t("remove")) + '</button></div>';
   }).join("") + '</div>' + (list.length < max ? '<div class="exbtns"><label class="btn filebtn">' + plus() + esc(t(kind === "photos" ? "addPhotos" : "addCerts")) +
-    '<input type="file" accept="image/*" multiple data-add="' + kind + '"></label></div>' : "");
+    '<input type="file" accept="' + (kind === "certs" ? "image/*,application/pdf,.pdf" : "image/*") + '" multiple data-add="' + kind + '"></label></div>' : "");
 }
 
 var WIRE = {
@@ -1254,11 +1294,26 @@ var WIRE = {
       inp.onchange = function (e) {
         var kind = inp.dataset.add, max = kind === "photos" ? 8 : 6, files = Array.prototype.slice.call(e.target.files || []);
         files = files.slice(0, Math.max(0, max - cur[kind].length)); if (!files.length) return;
-        toast(t("imgWorking"));
+        toast(t(files.some(isPdf) ? "pdfWorking" : "imgWorking"));
         files.reduce(function (pr, f) {
-          return pr.then(function () { return readImage(f, kind === "certs" ? 1800 : 1400, false).then(function (img) {
-            img.caption = kind === "certs" ? "" : ""; cur[kind].push(img); }, function () { toast(t("imgError")); }); });
-        }, Promise.resolve()).then(function () { var tt = $(".toast"); if (tt) tt.hidden = true; touch(); renderEditor(); });
+          return pr.then(function () {
+            var room = max - cur[kind].length; if (room <= 0) return;
+            if (kind === "certs" && isPdf(f)) {
+              return readPdf(f, room, 1800).then(function (pages) {
+                var base = nameToCaption(f.name);
+                pages.forEach(function (img) {
+                  img.caption = img.pages > 1 ? base + " (page " + img.page + ")" : base;
+                  delete img.page; delete img.pages; cur.certs.push(img);
+                });
+              }, function (err) {
+                toast(t(err && err.name === "PasswordException" ? "pdfLocked" : err && err.message === "big" ? "pdfBig" : err && err.message === "lib" ? "pdfLib" : "pdfError"));
+              });
+            }
+            return readImage(f, kind === "certs" ? 1800 : 1400, false).then(function (img) {
+              img.caption = kind === "certs" ? nameToCaption(f.name) : ""; cur[kind].push(img);
+            }, function () { toast(t("imgError")); });
+          });
+        }, Promise.resolve()).then(function () { touch(); renderEditor(); });
       };
     });
     app.querySelectorAll("[data-cap]").forEach(function (inp) {
