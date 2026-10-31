@@ -9,7 +9,7 @@ no internet, including Word/PDF export and PDF certificates (libraries in `lib/`
 cached by `sw.js`).
 
 ## Releasing an update
-Change the files, bump `VERSION` in `sw.js` (e.g. `rdc-pb-v3`), commit and push to `main`.
+Change the files, bump `VERSION` in `sw.js` (e.g. `rdc-pb-v4`), commit and push to `main`.
 Installed apps pick up the new version the next time they open online.
 
 ## Files

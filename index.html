@@ -3,7 +3,19 @@
 <meta name="theme-color" content="#14302F">
 <link rel="manifest" href="manifest.webmanifest"><link rel="icon" href="icons/icon-192.png"><link rel="apple-touch-icon" href="icons/icon-192.png">
 <script>var LIB_URLS = {"docx": "lib/docx.iife.js", "jspdf": "lib/jspdf.umd.min.js", "pdf": "lib/pdf.min.js", "pdfworker": "lib/pdf.worker.min.js"};
-if ("serviceWorker" in navigator) addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });</script>
+if ("serviceWorker" in navigator) {
+  var hadController = !!navigator.serviceWorker.controller, reloading = false;
+  navigator.serviceWorker.addEventListener("controllerchange", function () {
+    if (!hadController || reloading) { hadController = true; return; }
+    reloading = true;
+    (window.rdcFlush ? window.rdcFlush() : Promise.resolve()).then(function () { location.reload(); }, function () { location.reload(); });
+  });
+  addEventListener("load", function () {
+    navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then(function (r) {
+      document.addEventListener("visibilitychange", function () { if (!document.hidden) r.update().catch(function () {}); });
+    }).catch(function () {});
+  });
+}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Public+Sans:wght@400;500;600;700&display=swap">
 <style>
@@ -1384,6 +1396,7 @@ chrome();
     Store.put(ex).then(renderHome);
   } else renderHome();
 })();
+window.rdcFlush = flush;
 window.addEventListener("pagehide", function () { flush(); });
 document.addEventListener("visibilitychange", function () { if (document.hidden) flush(); });
 })();
